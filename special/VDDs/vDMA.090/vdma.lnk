@@ -1,5 +1,0 @@
-vdma.obj main.obj
-vdma.sys
-vdma.map
-vdh.lib
-vdma.def
