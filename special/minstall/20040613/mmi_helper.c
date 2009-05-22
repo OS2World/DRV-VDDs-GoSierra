@@ -1,0 +1,346 @@
+
+// щ Д ДДДДНН = Д  щ  Д = ННДДДД Д щ
+// і                               і
+//    ЬЫЫЫЫЫЫЫЬ   ЬЫЬ  ЬЫЫЫЫЫЫЫЫЬ          ъ  ъДДДНДДНДННДДННННДНННННННННОД
+// і ЫЫЫЫЯЯЯЫЫЫЫ ЫЫЫЫЫ ЫЫЫЯ   ЯЫЫЫ і             MINSTALL Front-End      є
+// є ЫЫЫЫЬЬЬЫЫЫЫ ЫЫЫЫЫ ЫЫЫЬ   ЬЫЫЫ є      ъ ДДДДНДННДДННННДННННННННДНННННОД
+// є ЫЫЫЫЫЫЫЫЫЫЫ ЫЫЫЫЫ ЫЫЫЫЫЫЫЫЫЯ  є       Section: MMOS/2 for eCS       є
+// є ЫЫЫЫ   ЫЫЫЫ ЫЫЫЫЫ ЫЫЫЫ ЯЫЫЫЫЬ є     і Created: 28/10/02             є
+// і ЯЫЫЯ   ЯЫЫЯ  ЯЫЯ  ЯЫЫЯ   ЯЫЫЯ і     і Last Modified:                і
+//                  ЬЬЬ                  і Number Of Modifications: 000  і
+// щ              ЬЫЫЯ             щ     і INCs required: *none*         і
+//      ДДДДДДД ЬЫЫЯ                     є Written By: Martin Kiewitz    і
+// і     ЪїЪїіЬЫЫЫЬЬЫЫЫЬ           і     є (c) Copyright by              і
+// є     АЩіАЩЯЫЫЫЯЯЬЫЫЯ           є     є      AiR ON-Line Software '02 ъ
+// є    ДДДДДДД    ЬЫЫЭ            є     є All rights reserved.
+// є              ЬЫЫЫДДДДДДДДД    є    ДОНННДНННННДННННДННДДНДДНДДДъДД  ъ
+// є             ЬЫЫЫЭі іЪїііД     є
+// і            ЬЫЫЫЫ АДііАЩіД     і
+//             ЯЫЫЫЫЭДДДДДДДДДД     
+// і             ЯЯ                і
+// щ Дґ-=’iз йп-Liпо SйџвW’зо=-ГДД щ
+
+
+#define INCL_BASE
+#define INCL_DOSMODULEMGR
+#define INCL_WINSHELLDATA
+#include <os2.h>
+#include <malloc.h>
+
+#include <global.h>
+#include <stdarg.h>
+#include <crcs.h>
+#include <dll.h>
+#include <file.h>
+#include <globstr.h>
+#include <msg.h>
+#include <mmi_public.h>
+#include <mmi_types.h>
+#include <mmi_main.h>
+#include <mmi_helper.h>
+#include <mmi_msg.h>
+
+// ****************************************************************************
+
+PMINSTDIR MINSTALL_SearchSourceDirID (ULONG DirectoryID) {
+   PMINSTDIR CurDirPtr = MCF_SourceDirArrayPtr;
+   USHORT       CurDirNo  = 0;
+
+   if (MCF_SourceDirCount==0)
+      return NULL;
+
+   while (CurDirNo<MCF_SourceDirCount) {
+      if (CurDirPtr->ID==DirectoryID)
+         return CurDirPtr;
+      CurDirPtr++; CurDirNo++;
+    }
+   return NULL;
+ }
+
+PMINSTDIR MINSTALL_SearchDestinDirID (ULONG DirectoryID) {
+   PMINSTDIR CurDirPtr = MCF_DestinDirArrayPtr;
+   USHORT       CurDirNo  = 0;
+
+   if (MCF_DestinDirCount==0)
+      return NULL;
+
+   while (CurDirNo<MCF_DestinDirCount) {
+      if (CurDirPtr->ID==DirectoryID)
+         return CurDirPtr;
+      CurDirPtr++; CurDirNo++;
+    }
+   return NULL;
+ }
+
+PMINSTGRP MINSTALL_SearchGroupID (ULONG GroupID) {
+   PMINSTGRP CurGrpPtr = MCF_GroupArrayPtr;
+   USHORT       CurGrpNo  = 0;
+
+   if (MCF_GroupCount==0)
+      return NULL;
+
+   while (CurGrpNo<MCF_GroupCount) {
+      if (CurGrpPtr->ID==GroupID)
+         return CurGrpPtr;
+      CurGrpPtr++; CurGrpNo++;
+    }
+   return NULL;
+ }
+
+PMINSTGRP MINSTALL_SearchGroupGeninID (ULONG GeninID) {
+   PMINSTGRP CurGrpPtr = MCF_GroupArrayPtr;
+   USHORT       CurGrpNo  = 0;
+
+   if (MCF_GroupCount==0)
+      return NULL;
+
+   while (CurGrpNo<MCF_GroupCount) {
+      if (CurGrpPtr->GeninID==GeninID)
+         return CurGrpPtr;
+      CurGrpPtr++; CurGrpNo++;
+    }
+   return NULL;
+ }
+
+PMINSTFILE MINSTALL_SearchFileCRC32 (ULONG FileCRC32) {
+   PMINSTFILE CurFilePtr = FCF_FileArrayPtr;
+   USHORT        CurFileNo  = 0;
+
+   if (FCF_FileCount==0)
+      return NULL;
+
+   while (CurFileNo<FCF_FileCount) {
+      if (CurFilePtr->NameCRC32==FileCRC32)
+         return CurFilePtr;
+      CurFilePtr++; CurFileNo++;
+    }
+   return NULL;
+ }
+
+PSZ MINSTALL_GetPointerToMacro (PCHAR *CurPosPtr, PCHAR EndPos) {
+   PCHAR         CurPos     = *CurPosPtr+2;
+   PCHAR         StartPos   = CurPos;
+   ULONG         CRC32      = 0;
+   ULONG         Temp       = 0;
+   PMINSTFILE CurFilePtr = 0;
+   PMINSTDIR  CurDirPtr  = 0;
+
+   while ((CurPos<EndPos) && (*CurPos!=')')) { 
+      *CurPos = tolower(*CurPos);
+      CurPos++;
+    }
+   CRC32 = CRC32_GetFromString (StartPos, CurPos-StartPos); CurPos++;
+
+   // Update CurPos @ caller...
+   *CurPosPtr = CurPos;
+
+   switch (CRC32) {
+    case 0xBAAB7A10: // $(DIR) -> Destination-Path by number, without ending "\"
+      StartPos = CurPos;
+      // Pass till non numeric digit or End-Of-Line
+      while ((CurPos<EndPos) & (*CurPos>=0x30) & (*CurPos<=0x39))
+         CurPos++;
+      if (CurPos>StartPos) {                // we found any digits?
+         Temp = atol(StartPos);
+         if ((CurDirPtr = MINSTALL_SearchDestinDirID(Temp))!=0) {
+            *CurPosPtr = CurPos;
+            strcpy (MINSTALL_TempMacroSpace, CurDirPtr->FQName);
+            Temp = strlen(CurDirPtr->FQName);
+            if (Temp!=0) Temp--;
+            if (MINSTALL_TempMacroSpace[Temp]=='\\') {
+               // only remove last char, if last char is '\'
+               MINSTALL_TempMacroSpace[Temp] = 0; // Remove last char '\'
+             }
+            return (PCHAR)&MINSTALL_TempMacroSpace;
+          } else {
+            MINSTALL_ErrorMsgID = MINSTMSG_UnknownDestinID;
+            return 0;
+          }
+       } else {
+         MINSTALL_ErrorMsgID = MINSTMSG_NumericValueExpected; return 0; }
+    case 0x88662993: // $(DEST) -> Destination Path of filename
+      StartPos = CurPos;
+      // Pass till ';', '"', ',', ' ' or End-Of-Line
+      while ((CurPos<EndPos) && (*CurPos!=0x22) && (*CurPos!=0x3B) && (*CurPos!=0x2C) && (*CurPos!=0x20)) {
+         *CurPos = tolower(*CurPos);
+         CurPos++;
+       }
+      if (CurPos>StartPos) {                // we found anything?
+         CRC32 = CRC32_GetFromString (StartPos, CurPos-StartPos);
+         if ((CurFilePtr = MINSTALL_SearchFileCRC32(CRC32))!=0) {
+            // Got that file, now get destination directory for it
+            return CurFilePtr->DestinPtr->FQName;
+          } else {
+            MSG_SetInsertViaString (2, StartPos, CurPos-StartPos);
+            MINSTALL_ErrorMsgID = MINSTMSG_UnlistedFile;
+            return 0;
+          }
+       } else {
+         MINSTALL_ErrorMsgID = MINSTMSG_StringExpected; return 0; }
+    case 0x46EDAEC4: // $(BOOT) -> Write Boot-Drive Letter (char only)
+      if (*CurPos==0x3A)
+         return (PCHAR)&MINSTALL_BootLetter; // char only (e.g. "D")
+        else
+         return (PCHAR)&MINSTALL_BootDrive;  // drive (e.g. "D:")
+    case 0x681DF58F: // $(DRIVE) -> Write MMBase-Drive Letter (char only)
+      if (*CurPos==0x3A)
+         return (PCHAR)&MINSTALL_MMBaseLetter; // char only (e.g. "D")
+        else
+         return (PCHAR)&MINSTALL_BootDrive;    // drive (e.g. "D:")
+    }
+   // Unknown macro, so reply NUL string...
+   return "";
+ }
+
+// Extracts a string including macro processing (e.g. '"TEST $(DIR)2"')
+//  including error checking. Needs to be called using CurPos == Position of
+//  trailing '"'
+PCHAR MINSTALL_GetMacrodString (PCHAR DestPtr, ULONG DestMaxSize, PCHAR StartPos, PCHAR EndPos) {
+   PCHAR  CurPos     = StartPos;
+   ULONG  TmpLen     = 0;
+   PCHAR  CurDestPtr = DestPtr;
+   PCHAR  MacroPtr   = 0;
+   ULONG  MacroLen   = 0;
+   CHAR   CurChar;
+
+   // One less, because of terminating Zero
+   DestMaxSize--;
+
+   if (*StartPos=='"') {
+      CurPos++;                             // Skip over '"'
+      // Now take over any chars till '"' including escape mechanismn
+      while (CurPos<EndPos) {
+         CurChar = *CurPos;
+         if (CurChar=='"') {
+            *CurDestPtr = 0;                // Set terminating NUL
+            return CurPos+1;
+          }
+         if (CurChar==0x0D) break;          // End-Of-Line reached during String
+         if (CurChar==0x5C) {               // is escape mechanismn
+            CurPos++;
+            if (CurPos<EndPos) {
+               if (!DestMaxSize) {
+                  MINSTALL_ErrorMsgID = MINSTMSG_StringTooBig; return 0; }
+               *CurDestPtr++ = *CurPos; DestMaxSize--;
+               CurPos++;
+             }
+          } else if (*(PUSHORT)CurPos==0x2824) {  // "$(" Macro found 
+            if (!(MacroPtr = MINSTALL_GetPointerToMacro (&CurPos, EndPos)))
+               return 0;                    // Bad macro, so signal error
+            MacroLen = strlen(MacroPtr);
+            if (DestMaxSize>=MacroLen) {
+               memcpy (CurDestPtr, MacroPtr, MacroLen);
+               CurDestPtr += MacroLen; DestMaxSize -= MacroLen;
+             }
+          } else {
+            if (!DestMaxSize) {
+               MINSTALL_TrappedError (MINSTMSG_StringTooBig); return 0; }
+            *CurDestPtr++ = CurChar; DestMaxSize--;
+            CurPos++;
+          }
+       }
+      MINSTALL_ErrorMsgID = MINSTMSG_UnexpectedEndOfLine;
+      return 0;                             // End-Of-Line reached during string
+    }
+   MINSTALL_ErrorMsgID = MINSTMSG_StringExpected;
+   return 0;
+ }
+
+PCHAR MINSTALL_GetNumericValue (PULONG DestPtr, PCHAR StartPos, PCHAR EndPos) {
+   PCHAR CurPos;
+
+   CurPos = STRING_GetNumericValue(DestPtr, StartPos, EndPos);
+   if (!CurPos)
+      MINSTALL_ErrorMsgID = MINSTMSG_NumericValueExpected;
+   return CurPos;
+ }
+
+ULONG MINSTALL_GetVersionCode (PSZ VersionString) {
+   PCHAR CurPos;
+   ULONG Number1;
+   ULONG Number2 = 0;
+   ULONG Number3 = 0;
+
+   Number1 = strtol (VersionString, &CurPos, 10);
+   if (*CurPos=='.') {
+      CurPos++;
+      if (*CurPos!=0) {
+         Number2 = strtoul (CurPos, &CurPos, 10);
+         if (*CurPos=='.') {
+            CurPos++;
+            if (*CurPos!=0) {
+               Number3 = strtoul (CurPos, NULL, 10);
+             }
+          }
+       }
+    }
+   if (Number1>255) Number1=255;
+   if (Number2>255) Number2=255;
+   if (Number3>255) Number3=255;
+   return (Number1<<16)+(Number2<<8)+Number3;
+ }
+
+VOID MINSTALL_GetInstalledVersion (PSZ GroupName, PSZ DestVersionInstalled) {
+   HINI  CompListHandle = 0;
+   ULONG MaxSize        = MINSTMAX_STRLENGTH;
+
+   DestVersionInstalled[0] = 0;
+   // If GroupName is NULL, just set NULL Version
+   if (strlen(GroupName)==0) return;
+
+   // Open COMPLIST.ini...
+   //  MINSTALL_PMHandle may be NULL in here, but this won't matter.
+   CompListHandle = PrfOpenProfile (MINSTALL_PMHandle, MINSTALL_CompListINI);
+   if (CompListHandle==NULLHANDLE) return;  // Exit, if Open failed
+
+   // Query version-number...
+   PrfQueryProfileData(CompListHandle, GroupName, "VERSION_NUMBER", (PVOID)DestVersionInstalled, &MaxSize);
+
+   // Close COMPLIST.ini...
+   PrfCloseProfile (CompListHandle);
+ }
+
+VOID MINSTALL_TrappedError (ULONG ErrorMsgID) {
+   MINSTALL_ErrorMsgID = ErrorMsgID;
+   MSG_Get (MINSTALL_ErrorMsg, 1024, MINSTALL_ErrorMsgID);
+   MINSTLOG_ToFile (MINSTALL_ErrorMsg);
+ }
+
+VOID MINSTLOG_OpenFile (void) {
+   MINSTLOG_CloseFile();
+   if (MINSTLOG_FileName[0]!=0)
+      MINSTLOG_FileHandle = fopen(MINSTLOG_FileName, "w+");
+ }
+
+VOID MINSTLOG_CloseFile (void) {
+   if (MINSTLOG_FileHandle) fclose (MINSTLOG_FileHandle);
+ }
+
+VOID MINSTLOG_ToFile (PSZ FormatStr, ...) {
+   va_list arglist;
+   va_start (arglist, FormatStr);
+   if (MINSTLOG_FileHandle) vfprintf (MINSTLOG_FileHandle, FormatStr, arglist);
+   va_end (arglist);
+ }
+
+VOID MINSTLOG_ToScreen (PSZ FormatStr, ...) {
+   va_list arglist;
+   va_start (arglist, FormatStr);
+   vprintf (FormatStr, arglist);
+   va_end (arglist);
+ }
+
+VOID MINSTLOG_ToAll (PSZ FormatStr, ...) {
+   va_list arglist;
+   va_start (arglist, FormatStr);
+   vprintf (FormatStr, arglist);
+   if (MINSTLOG_FileHandle) vfprintf (MINSTLOG_FileHandle, FormatStr, arglist);
+   va_end (arglist);
+ }
+
+VOID MINSTALL_printf (PSZ FormatStr, ...) {
+   va_list arglist;
+   va_start (arglist, FormatStr);
+   vprintf (FormatStr, arglist);
+   va_end (arglist);
+ }

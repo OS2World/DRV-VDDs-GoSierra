@@ -1,0 +1,87 @@
+
+         /* driver 1.0.000 - MR1 1.1.3   Base(WS1.0 tree) + CSD */
+
+package="IBM Multimedia Presentation Manager/2"
+codepage=437
+filelist="files.scr"
+groupcount=6
+munitcount=1
+
+medianame="IBM Multimedia Presentation Manager/2 Diskette 1"
+
+
+
+sourcedir = "\\"                               = 0
+
+destindir = "\\MMOS2\\DLL\\"                           = 2
+/* Has been added for the restore option of genin.dll etc */
+destindir = "\\MMOS2\\DLLBACK\\                       = 13
+/* Has been added to keep track on options that can be uninstalled */
+destindir = "\\MMOS2\\UNINST\\"                       = 14
+destindir = "\\MMOS2\\HELP\\"                          = 7
+destindir = "\\MMOS2\\"                                = 0
+destindir = "\\MMOS2\\INSTALL\\"                       = 4
+destindir = "\\MMOS2\\MOVIES\\"                        = 3
+destindir = "\\MMOS2\\MACROS\\"                        = 6
+destindir = "\\MMOS2\\DSP\\"                           = 5
+destindir = "\\MMOS2\\SOUNDS\\"                        = 9
+destindir = "$(DELETE)$(BOOT)\\OS2\\DLL\\"             = 10
+destindir = "$(BOOT)\\OS2\\DLL\\"                      = 11
+destindir = "$(DELETE)\\MMOS2\\DLL\\"                  = 12
+destindir = "\\MMOS2\\IMAGES\\"                        = 26
+destindir = "$(BOOT)\\OS2\\INSTALL\\"                  = 27
+destindir = "$(BOOT)\\OS2\\"                           = 28
+destindir = "\\MMOS2\\SOUNDS\\DESKTOP\\"               = 29    /* EdS: 148768 */
+destindir = "\\MMOS2\\SOUNDS\\GARDEN\\"                = 30    /* EdS: 148768 */
+destindir = "\\MMOS2\\SOUNDS\\OCEAN\\"                 = 31    /* EdS: 148768 */
+destindir = "\\MMOS2\\SOUNDS\\SPACE\\"                 = 32    /* EdS: 148768 */
+
+
+ssgroup=0               /*  base group */
+sssize=2500
+ssname="mmbase"
+ssversion="1.1.5"
+ssinich="FOURMEG.SCR"
+ssdll="mmsnd.dll"
+ssconfigch="BASECONF.CH"
+ssdllentry="InstallMMSound"
+sstermdll="ITERM2.DLL"
+sstermdllentry="ITermEntry"
+
+
+
+ssgroup=1               /*  OpenDoc Group */
+sssize=2500
+ssname="Open Doc for MMPM/2"
+ssversion="1.1.6"
+ssodinst="MULTIMEDIA"
+ssselect="VERSION"
+
+/* This stub is here, otherwhise minstall will not process this control.scr 
+
+ssgroup=2
+ssname="SoftWare\nMotion Video"
+ssselect="ALWAYS" 
+
+/* This stub is here, otherwhise minstall will not process this control.scr 
+ssgroup=5
+ssname="CD Audio"
+ssselect="ALWAYS" 
+
+/*           14 = WepmPlus */
+ssgroup=14
+ssname="Wepmplus"
+ssversion="1.1.5"
+sssize=60
+sstermdll="WEPMPINT.DLL"
+sstermdllentry="WepmPlusAdd"
+ssselect="ALWAYS"
+
+/* -19  hidden csd to change version */
+ssgroup=19
+sssize=50
+ssname="CSD"
+ssversion="1.1.5"
+ssselect="ALWAYS"
+
+/* VAPM has been moved to the new control.scr for video playback */
