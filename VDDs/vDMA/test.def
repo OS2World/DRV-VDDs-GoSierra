@@ -1,0 +1,8 @@
+system os2v2
+option Quiet,Map,CaseExact,ManyAutoData
+option modname=test
+option nodefaultlibs
+file main.obj
+file test.obj
+library os2386
+library clib3s

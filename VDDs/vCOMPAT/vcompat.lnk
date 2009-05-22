@@ -1,0 +1,5 @@
+vcompat.obj main.obj magicvmp.obj
+vcompat.sys
+vcompat.map
+vdh.lib
+vcompat.def

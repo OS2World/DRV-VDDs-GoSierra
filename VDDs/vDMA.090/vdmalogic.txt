@@ -1,0 +1,89 @@
+Physical DMA Logic:
+====================
+   To maximize overall compatibility, we will only get a physical DMA channel,
+   if it's not in use. So any other use has priority over a VDM session.
+   This is checked, by checking the "WriteMasks" register. We don't use the
+   status register, because of multitasking problems (see next paragraph).
+
+   This means that if the user is playing an MP3 using the WPS, the playback
+   won't get stopped. The VDM application won't notice anything (but if it
+   requires an IRQ from Soundblaster, in that case it will most likely lock up)
+
+   When the VDM application closes down DMA playback, we will check if the
+   channel is really in-use by *us*. This is done by checking, if the physical
+   DMA is still positioned to our specific DMA buffer. If it's not, the channel
+   won't get touched for security. (for example: DOS game is running, user
+   plays back an MP3, DOS game is stopped -> MP3 playback would stop otherwise)
+
+   Allocating each DMA buffer (every channel may have one at a time) is done in
+   a dynamic manner. It's allocated when needed and it's disposed, when the
+   VDM that used it as last one is closed. This means that one could have 2
+   sessions open. One could play some music, now the user would stop it and go
+   to the 2nd session and start some music there. The same DMA buffer would get
+   used and the user could actually close the 1st session without interrupting
+   the 2nd session. All DMA buffers for 8-bit channels are 64k big, all DMA
+   buffers for 16-bit channels are 128k big. This was done for easy handling,
+   so we will never have to reallocate anywhere.
+
+DMA Status Register:
+=====================
+   We never ever touch the physical DMA Status register (08h/D0h), because its
+   not multitask friendly. It will forget about the status after ONE read, this
+   means that if multiple PDDs/VDDs/whatever read that register, results will
+   get inaccurate. We calculate the contents of that register by simply using
+   DMA-CurLength and looking, if "Terminal Count" (end of transfer) is reached.
+   There is no other way.
+
+DMA CurLength:
+===============
+   Will get taken from PDMA/VDD only, when VDMA is enabled. If it's disabled
+   CurPos is sticky to the last value that got read (or 0FFFFh at startup).
+
+DMA Transfer-End:
+==================
+   "Terminal Count" is set in VDMA_UpdateCurPos(), if Bit 16 of CurPos is set.
+   TC is *not* sticky, it will wear off after one read.
+   If we use Single-Init, a set TC will also trigger VDMA_TransferStopped().
+
+   PDMA:
+    a) Single-Init: Set if CurLength==0FFFFh
+    b) Auto-Init  : Set as soon as ProcessOnePCopyStep overflows
+
+Physical DMA-Transfer Timer is executed, no DMA-interaction by VDM:
+--------------------------------------------------------------------
+   -> Check, if physical DMA-Channel is unmasked (enabled)
+       -> Check, if physical DMA-Channel Address points to our own Buffer
+           -> Mask DMA-Channel to stop it playing
+
+Emulation Methods used by VDM:
+-------------------------------
+   Single-Init Mode:
+  ===================
+   On fresh transfers, the first few bytes (1k) will get copied over, then the
+   transfer will get started. Afterwards the remaining bytes will get copied as
+   well.
+
+   If we detect DMA-CurLength Peeks...
+    [                                  ]
+    [   |                              ]
+    [       |                          ] - Rape-Fill detected so copy:
+    [        xxxxxx                    ]    (from current pos 1 1/2 of last
+                                             distance)
+    [           |                      ]
+    [            xxxxxx                ]
+
+    [               |                  ]
+    [                xxxxxx            ]
+
+   Auto-Init Mode:
+  =================
+   First of all, we will copy the whole current buffer over and kick-start it
+    afterwards. We will assume that we will get at least 2 VDHCallOutDMA() and
+    we split buffer internally (double-buffer technique).
+
+   If we detect DMA-CurLength Peeks, we will wait till we get at least 2 within
+    one loop. On the 2nd, we will copy data from CopyPos till LastGotPos,
+    effectively copying application assumed processed data.
+
+   After switching to Rape-Fill, we will stay there till the transfer gets
+    stopped by the application.

@@ -1,0 +1,86 @@
+
+                 ============================================
+                  Martin Kiewitz's vTIMER-Replacement v0.9b
+                 ============================================
+
+                             Released on 29.08.2002
+
+                        Written and (c) by Martin Kiewitz
+                            Dedicated to Gerd Kiewitz
+-------------------------------------------------------------------------------
+
+  ============
+  | FOREWORD |
+  ============
+
+        Some years ago, I wrote a vDMA replacement for the one from IBM. Sadly
+         my virtualization logic at that time was too complex, so it didn't
+         work well. Now I simplified the logic, but I noticed a problem with
+         IBM's vTIMER.
+
+        vTIMER calls the vDMA driver depending on how the VDM application uses
+         timer interrupts. This worked using IBM's vDMA, but mine is quite more
+         accurate and it needs fast timer interrupts. IBM's vTIMER only
+         delivers that, when the application itself requests it and there is
+         no way to ask vTIMER for this service.
+
+        Also IBM's vTIMER does not support IRQ8 (CMOS Real-Time IRQ), so some
+         applications that depend on that service don't work.
+
+        IBM's vTIMER supported INTERRUPT 15h/AH=01h/04h (ABIOS services). Mine
+         does not. Everything else should be as backwardscompatible as possible.
+
+  ================
+  | KNOWN-TO-FIX |
+  ================
+
+        Archon Ultra (IRQ8 service)
+
+        This driver provides an API, that makes it possible for the vDMA
+         replacement to more accurately virtualize DMA.
+
+  =============
+  | IMPORTANT |
+  =============
+
+        This driver is definitely in public *BETA* state. Do NOT use it in
+         productive environments.
+
+  =====================
+  | VDMA INSTALLATION |
+  =====================
+
+        Simply replace \OS2\MDOS\VTIMER.SYS with the supplied version.
+         Please *DO* make a backup copy of the original driver, so you can
+         restore it, if my replacement doesn't work correctly.
+
+        YOU DO NOT HAVE TO MODIFY YOUR CONFIG.SYS. VTIMER IS LOADED
+         AUTOMATICALLY BY OS/2.
+
+  ==================
+  | VTIMER HISTORY |
+  ==================
+
+        v0.1i  - Internal release
+        v0.9b  - First public beta release
+
+  ===========
+  | CONTACT |
+  ===========
+
+        There are several ways to contact me, but you only get this one:
+         'kiewitz@klinikum-konstanz.de'
+
+        Official homepage for all my stuff:
+         'http://ecomstation.ru/kiewitzsoft/'
+
+  ==========================
+  | GREETZ AND DEDICATIONS |
+  ==========================
+
+        I'm dedicating VDMA to Gerd Kiewitz, my daddy.
+
+        I want to thank IBM for the great operating system called OS/2 and
+         Serenity Systems for releasing eComStation.
+
+ - Martin Kiewitz

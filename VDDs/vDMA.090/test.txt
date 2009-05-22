@@ -1,0 +1,32 @@
+Emulation Methods used by VDM:
+-------------------------------
+   Single-Init Mode:
+  ===================
+   On fresh transfers, the first few bytes (1k) will get copied over, then the
+   transfer will get started. Afterwards the remaining bytes will get copied as
+   well.
+
+   If we detect DMA-CurLength Peeks...
+    [                                  ]
+    [   |                              ]
+    [       |                          ] - Rape-Fill detected so copy:
+    [        xxxxxx                    ]    (from current pos 1 1/2 of last
+                                             distance)
+    [           |                      ]
+    [            xxxxxx                ]
+
+    [               |                  ]
+    [                xxxxxx            ]
+
+   Auto-Init Mode:
+  =================
+   First of all, we will copy the whole current buffer over and kick-start it
+    afterwards. We will assume that we will get at least 2 VDHCallOutDMA() and
+    we split buffer internally (double-buffer technique).
+
+   If we detect DMA-CurLength Peeks, we will wait till we get at least 2 within
+    one loop. On the 2nd, we will copy data from CopyPos till LastGotPos,
+    effectively copying application assumed processed data.
+
+   After switching to Rape-Fill, we will stay there till the transfer gets
+    stopped by the application.

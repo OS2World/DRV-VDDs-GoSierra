@@ -1,0 +1,77 @@
+
+                   =========================================
+                    Martin Kiewitz's vLPT-Replacement v0.9b
+                   =========================================
+
+                             Released on 29.08.2002
+
+                        Written and (c) by Martin Kiewitz
+                            Dedicated to Gerd Kiewitz
+-------------------------------------------------------------------------------
+
+  ============
+  | FOREWORD |
+  ============
+
+        Well, at the location that I work at, we are using a system for DNA
+         analysis. This is working on a DOS/Windows 3.11 environment and is
+         using a parallel port dongle. This system broke several times, but I
+         was able to fix it. I thought about that dongle breaking and so I did
+         a vLPT replacement, that is able to emulate (at least) this dongle.
+
+        The original vLPT from IBM was not really a virtualization driver. It
+         simply checked, if full hardware access could be granted and then gave
+         this to the VDM application. This is of course not the best solution,
+         because newer parallel ports are able to be interrupt driven and most
+         DOS software uses them in polling mode, which wastes many CPU cycles.
+
+        My VDD actually simulates a parallel port to the DOS application and so
+         it's even possible to reroute parallel traffic to USB devices, reroute
+         it to actual files or even making a DOS program indirectly use ECP/EPP
+         for communication to a printer.
+
+  =============
+  | IMPORTANT |
+  =============
+
+        This driver is definitely in public *BETA* state. Do NOT use it in
+         productive environments.
+
+  =====================
+  | VDMA INSTALLATION |
+  =====================
+
+        Simply replace \OS2\MDOS\VLPT.SYS with the supplied version.
+         Please *DO* make a backup copy of the original driver, so you can
+         restore it, if my replacement doesn't work correctly.
+
+        YOU DO NOT HAVE TO MODIFY YOUR CONFIG.SYS. VLPT IS LOADED AUTOMATICALLY
+         BY OS/2.
+
+  ================
+  | vLPT HISTORY |
+  ================
+
+        v0.1i  - Internal release
+        v0.9b  - First public beta release
+
+  ===========
+  | CONTACT |
+  ===========
+
+        There are several ways to contact me, but you only get this one:
+         'kiewitz@klinikum-konstanz.de'
+
+        Official homepage for all my stuff:
+         'http://ecomstation.ru/kiewitzsoft/'
+
+  ==========================
+  | GREETZ AND DEDICATIONS |
+  ==========================
+
+        I'm dedicating VLPT to Gerd Kiewitz, my daddy.
+
+        I want to thank IBM for the great operating system called OS/2 and
+         Serenity Systems for releasing eComStation.
+
+ - Martin Kiewitz

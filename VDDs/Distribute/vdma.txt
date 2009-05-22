@@ -1,0 +1,109 @@
+
+                  ==========================================
+                   Martin Kiewitz's VDMA-Replacement v0.92b
+                  ==========================================
+
+                             Released on 29.08.2002
+
+                        Written and (c) by Martin Kiewitz
+                            Dedicated to Gerd Kiewitz
+-------------------------------------------------------------------------------
+
+  ============
+  | FOREWORD |
+  ============
+
+        The original VDMA driver done by I.B.M. was fixed, patched and extended
+         for about 10 years. Still the DMA port emulation is not quite complete
+         or accurate and some things weren't done in a really efficient manner.
+
+        DMA in VDMs is mostly used for sound output of games and due to limits
+         of the original driver, games like Prince of Persia 2, Goblins 3 and
+         Sam'n Max didn't work at all or not right.
+
+        Additionally my VSOUND driver that emulates a Soundblaster card in 100%
+         software needed a better API for virtualizing DMA transfers.
+
+        That's why I did this replacement. It actually took me about 3-4 days
+         in total, the rest was just some tweaking, because some games really
+         rape the DMA chip.
+
+        My version is 100% new. It contains a completely new logic for
+         emulating DMA transfers. It's half the size of the original driver,
+         definitely more accurate and is coded using about 80% assembly and 20%
+         Watcom C code.
+
+        Since I had some time left currently, I tweaked my VDMA driver and I'm
+         using a more generic and simpler approach to virtualization of
+         DMA transfers. I think I should have nailed it this time.
+
+  ================
+  | KNOWN-TO-FIX |
+  ================
+
+        Goblins 3
+        Pandora Directive
+        Prince Of Persia 2
+        Sam'n Max (sound worked, but quality was really messy)
+        Some other games
+
+        This driver also makes it possible to build a vSOUND driver. The old
+         IBM vDMA does not offer the needed APIs for this to work.
+
+  =============
+  | IMPORTANT |
+  =============
+
+        This driver is definitely in public *BETA* state. Do NOT use it in
+         productive environments. If you use some scientific program under VDM
+         that reads/writes data via DMA, PLEASE NOTE THAT THE DRIVER IS *BETA*.
+
+        My driver doesn't have virtual DMA services support (INT 4Bh), because
+         I couldn't find one program that needs such support. Additionally the
+         emulation logic is different, so it *could* happen that DMA transfered
+         data gets messed up. So please *TRY* first and check for accurate
+         results.
+
+        If you find a program/game, that doesn't work accurately with this
+         driver, then PLEASE REPORT it to me, so I can fix it.
+
+  =====================
+  | VDMA INSTALLATION |
+  =====================
+
+        Simply replace \OS2\MDOS\VDMA.SYS with the supplied version.
+         Please *DO* make a backup copy of the original driver, so you can
+         restore it, if my replacement doesn't work correctly.
+
+        YOU DO NOT HAVE TO MODIFY YOUR CONFIG.SYS. VDMA IS LOADED AUTOMATICALLY
+         BY OS/2.
+
+  ================
+  | VDMA HISTORY |
+  ================
+
+        v0.1b  - First internal beta release
+        v0.9b  - First public beta release
+        v0.91b - Internal tweaking release
+        v0.92b - Internal re-tweak release
+
+  ===========
+  | CONTACT |
+  ===========
+
+        There are several ways to contact me, but you only get this one:
+         'kiewitz@klinikum-konstanz.de'
+
+        Official homepage for all my stuff:
+         'http://ecomstation.ru/kiewitzsoft/'
+
+  ==========================
+  | GREETZ AND DEDICATIONS |
+  ==========================
+
+        I'm dedicating VDMA to Gerd Kiewitz, my daddy.
+
+        I want to thank IBM for the great operating system called OS/2 and
+         Serenity Systems for releasing eComStation.
+
+ - Martin Kiewitz

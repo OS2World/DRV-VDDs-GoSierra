@@ -1,0 +1,5 @@
+vcdrom.obj main.obj
+vcdrom.sys
+vcdrom.map
+vdh.lib
+vcdrom.def

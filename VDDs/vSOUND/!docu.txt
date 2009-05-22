@@ -1,0 +1,59 @@
+SB-VDD is a Virtual Soundblaster Driver for OS/2 / eCS
+=======================================================
+
+Written by Martin Kiewitz, all rights reserved.
+
+This documentation contains all the specials of this VDD.
+Not everything can be emulated for 100%, but I believe I got most of all right.
+
+For ease of use, this VDD is *hard-coded* to Port 220h-22Fh, IRQ 5 and DMA 1/5.
+ This can *NOT* be changed, because most games expect the hardware at that
+ location. If the VDM isn't starting up after installing this driver, then it
+ could mean that you already got another VDD that uses the same ports/IRQ.
+ Simply remove it.
+
+A special-thing to detect the emulation of this VDD is to request the version
+ number via SB-Command E1h. First the SB-version will be replied as 2 bytes.
+ After that the magics 77d and 75d. In ASCII notation this means MK.
+
+HW_SOUND defines copyright
+
+HW_SOUND_PASSTHRU defines, if VSOUND is supposed to pass through all
+ soundblaster commands to a real Soundblaster existing on port 220h. IRQ may
+ be different, but vSOUND will emulate in any case detection IRQs via IRQ5.
+
+HW_SOUND_TYPE defines, what type of Soundblaster gets emulated
+ Possible choices are "Soundblaster 16", "Soundblaster PRO", "Soundblaster" and
+  "None". Note: This does not change actual emulation, so 16-bit stereo is
+  available at any time. It only affects version number of returned hardware.
+
+HW_SOUND_MIXER defines, if a VDM application is allowed to change volume/treble
+ settings on the real soundcard.
+
+Connection to vCOMPAT at init time:
+Detection of DMA transfer (1 byte size) -> trigger to vCOMPAT
+ -> Send ClientRegisterFrame to vCOMPAT
+ -> vCOMPAT will then match MagicalVMPatcher signatures onto current CS
+ -> Now process I/O command
+
+Also patch out Dynamix IRQ restore bug (same detection):
+      ' 2EC706????A100 - MOV  Word Ptr CS:[????],00A1
+      ' B00A           - MOV  AL,0A
+      ' BB????         - MOV  BX,????
+      ' 2E8A26????     - MOV  AH,Byte Ptr CS:[????]
+      ' 0E             - PUSH CS
+      ' E8????         - CALL ????
+      ' Insert last line (MOV) in here and everything works...
+; Proposed fix!
+      ' B007           - MOV  AL,07
+      ' BB????         - MOV  BX,????
+      ' 2E8A26????     - MOV  AH,Byte Ptr CS:[????]
+      ' 0E             - PUSH CS
+      ' E8????         - CALL ????
+      ' B005           - MOV  AL,05
+      ' BB????         - MOV  BX,????
+      ' 2E8A26????     - MOV  AH,Byte Ptr CS:[????]
+      ' 0E             - PUSH CS
+      ' E8????         - CALL ????
+; This line is badly positioned
+      ' 2EC706????2100 - MOV  Word Ptr CS:[????],0021

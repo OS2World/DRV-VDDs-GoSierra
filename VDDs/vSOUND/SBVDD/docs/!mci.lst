@@ -1,0 +1,103 @@
+      /*********************************************************************/
+      /* parameter structure for the MCI_BUFFER    message                 */
+      /*********************************************************************/
+      typedef struct _MCI_MIX_BUFFER  
+      {
+         ULONG      ulStructLength;   /* Length of the structure          */
+         PVOID      pBuffer;          /* Pointer to a buffer              */
+         ULONG      ulBufferLength;   /* Length of the buffer             */
+         ULONG      ulFlags;          /* Flags                            */
+         ULONG      ulUserParm;       /* Caller parameter                 */
+         ULONG      ulTime;           /* OUT--Current time in MS          */
+         ULONG      ulReserved1;      /* Unused.                          */
+         ULONG      ulReserved2;      /* Unused.                          */
+      } MCI_MIX_BUFFER;
+      
+      typedef MCI_MIX_BUFFER *PMCI_MIX_BUFFER;
+      
+      
+      /*********************************************************************/
+      /* valid options for the ulFlags field of MCI_MIX_BUFFER             */
+      /*********************************************************************/
+      
+      
+      #define MIX_BUFFER_EOS                0x00000001L
+      
+      
+      
+      typedef LONG (APIENTRY MIXERPROC)
+                    ( ULONG            ulHandle,
+                    PMCI_MIX_BUFFER  pBuffer,
+                    ULONG            ulFlags        );
+      
+      typedef MIXERPROC *PMIXERPROC;
+      typedef LONG (APIENTRY MIXEREVENT)
+                    ( ULONG            ulStatus,
+                    PMCI_MIX_BUFFER  pBuffer,
+                    ULONG            ulFlags        );
+      
+      typedef MIXEREVENT  *PMIXEREVENT;
+      
+      /*********************************************************************/
+      /* valid returns for the ulFlags param of the MIXEREVENT entry       */
+      /*********************************************************************/
+      
+      
+      #define MIX_STREAM_ERROR             0x00000080L
+      #define MIX_READ_COMPLETE            0x00000001L
+      #define MIX_WRITE_COMPLETE           0x00000002L
+      
+      
+      
+      /*********************************************************************/
+      /* parameter structure for the MCI_MIXSETUP_PARMS message            */
+      /*********************************************************************/
+      typedef struct _MCI_MIXSETUP_PARMS  
+      {
+         HWND         hwndCallback;     /* PM window handle for MCI notify message      */
+         ULONG        ulBitsPerSample;  /* IN Number of Bits per Sample                 */
+         ULONG        ulFormatTag;      /* IN Format Tag                                */
+         ULONG        ulSamplesPerSec;  /* IN Sampling Rate                             */
+         ULONG        ulChannels;       /* IN Number of channels                        */
+         ULONG        ulFormatMode;     /* IN Either MCI_RECORD or MCI_PLAY             */
+         ULONG        ulDeviceType;     /* IN MCI_DEVTYPE (i.e. DEVTYPE_WAVEFORM etc.)  */
+         ULONG        ulMixHandle;      /* OUT--mixer returns handle for write/read     */
+         PMIXERPROC   pmixWrite;        /* OUT-Mixer Write Routine entry point          */
+         PMIXERPROC   pmixRead;         /* OUT-Mixer Read Routine entry point           */
+         PMIXEREVENT  pmixEvent;        /* IN--Mixer Read Routine entry point           */
+         PVOID        pExtendedInfo;    /* Ptr to extended wave information             */
+         ULONG        ulBufferSize;     /* OUT--suggested buffer size for current mode  */
+         ULONG        ulNumBuffers;     /* OUT--suggested # of buffers for current mode */
+      } MCI_MIXSETUP_PARMS;
+      
+      typedef MCI_MIXSETUP_PARMS   *PMCI_MIXSETUP_PARMS;
+      
+      /*********************************************************************/
+      /* Flags for use with ulParam1                                       */
+      /*********************************************************************/
+      
+      
+      
+      #define  MCI_BUFFER_QUERY         0x00010000L
+      #define  MCI_BUFFER_SET           0x00020000L
+      #define  MCI_ALLOCATE_MEMORY      0x00040000L
+      #define  MCI_DEALLOCATE_MEMORY    0x00080000L
+      
+      
+      /*********************************************************************/
+      /* parameter structure for the MCI_BUFFER    message                 */
+      /*********************************************************************/
+      typedef struct _MCI_BUFFER_PARMS  
+      {
+         HWND       hwndCallback;     /* PM window handle for MCI notify message    */
+         ULONG      ulStructLength;   /* Length of the MCI Buffer command           */
+         ULONG      ulNumBuffers;     /* Number of buffers MCI driver should use    */
+         ULONG      ulBufferSize;     /* Size of buffers MCI driver should use      */
+         ULONG      ulMinToStart;     /* Min number of buffers to create a stream.  */
+         ULONG      ulSrcStart;       /* # of EMPTY buffers required to start Source*/
+         ULONG      ulTgtStart;       /* # of FULL buffers required to start Target */
+         
+         PVOID      pBufList;         /* Pointer to a list of buffers               */
+         
+      } MCI_BUFFER_PARMS;
+      typedef MCI_BUFFER_PARMS   *PMCI_BUFFER_PARMS;

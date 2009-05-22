@@ -1,0 +1,7 @@
+
+- Look for OPEN FILE "RESOURCE.CFG"
+- If that's the case, wait for other triggers including TERMINATE (4Ch)
+- Look for OPEN FILE "*.drv"
+- Now look for READing whole file at once
+ - if found, check basically if it seems to be a sierra driver
+ - now match MVMP signatures onto the binary data
