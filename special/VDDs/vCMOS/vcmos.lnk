@@ -1,0 +1,5 @@
+vcmos.obj main.obj
+vcmos.sys
+vcmos.map
+vdh.lib
+vcmos.def

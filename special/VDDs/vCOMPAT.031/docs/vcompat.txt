@@ -1,0 +1,180 @@
+
+                        =================================
+                         Martin Kiewitz's vCOMPAT v0.31b
+                        =================================
+
+                             Released on 10.10.2002
+
+                        Written and (c) by Martin Kiewitz
+                            Dedicated to Gerd Kiewitz
+-------------------------------------------------------------------------------
+
+  ============
+  | FOREWORD |
+  ============
+
+        OS/2 / eComStation's VDM is nearly perfectly emulating a real DOS
+         session. Did I say nearly? Yes, I did.
+
+        Some programs are too restrictive in their use of DOS APIs.
+         And some MDOS-APIs do not behave 100% like in real DOS. Additionally
+         some programs contain library bugs, so they won't run on faster
+         machines even under real DOS (like e.g. Turbo Pascal CRT Unit bug).
+
+        That's why I did this compatibility VDD. It hooks itself into the
+         middle of several APIs and it contains a magical VM patcher, that is
+         able to patch out some buggy routines on-the-fly, which means the user
+         won't even notice that he got a broken program.
+
+        vCOMPAT also contains code to patch out bugs in DPMI based (eg DOS4GW)
+         games, so that they will run under OS/2 / eCS. This code is not
+         absolutely failsafe and it *could* make a DPMI application crash, so
+         if you experience a crash try to disable this feature. If you are
+         using a DPMI application that is already working as expected, don't
+         switch this feature on.
+
+        This is just the beginning.
+
+  ========================
+  | vCOMPAT INSTALLATION |
+  ========================
+
+        Simply copy VCOMPAT.SYS into your MDOS directory (e.g. x:\OS2\MDOS)
+         and insert this line into config.sys:
+         'DEVICE=x:\OS2\MDOS\VCOMPAT.SYS'
+         (where x:\ is your OS/2 / eCS boot-drive)
+
+        It would be wise to insert the line after all other VDDs.
+
+  ======================
+  | vCOMPAT PROPERTIES |
+  ======================
+
+        COMPATIBILITY_2GBSIZELIMIT:
+       -----------------------------
+         If enabled, vCOMPAT will fake total and free disk space to a maximum
+          of 2 GB. Some DOS applications get confused, when DOS reports more,
+          especially some software installer.
+
+        COMPATIBILITY_CDROM:
+       ----------------------
+         If enabled, vCOMPAT will fix the behaviour of the CD-Extension APIs.
+          This includes various fixes for CD-Audio, generic behaviour and some
+          other CD-ROM specific things.
+
+        COMPATIBILITY_DPMI:
+       ---------------------
+         If enabled, vCOMPAT will include work-arounds for DPMI applications.
+          If Magical VM Patcher is activated as well, bugs in DPMI applications
+          will get removed as well (this doesn't include bad CLI code).
+
+        COMPATIBILITY_DPMI_ANTICLI:
+       -----------------------------
+         If enabled, Magical VM Patcher will also react on bad CLI-code and
+          remove it on-the-fly. This will fix many, many games. Theoretically
+          it could break applications, so don't activate until you need it.
+          This property requires COMPATIBILITY_DPMI to be ON.
+
+        COMPATIBILITY_JOYSTICKBIOS:
+       -----------------------------
+         If enabled, vCOMPAT will handle any calls to Joystick BIOS APIs.
+          Normally OS/2 would forward this call to the real BIOS.
+
+        COMPATIBILITY_MOUSENSE:
+       -------------------------
+         If enabled, vCOMPAT will make the mouse more sensitive. This feature
+          is only meant for some specific games and shouldn't be active at any
+          other time.
+
+        COMPATIBILITY_MAGICVMPATCHER:
+       -------------------------------
+         Possible selections
+         AUTOMATIC - VM Patcher will automatically patch out bugs in programs
+                      No notification will be made to the user
+         ENABLED   - VM Patcher will detect bugs and generate a PopUp
+                      accordingly. Choose ignore in that PopUp dialog to skip
+                      patching
+         DISABLED  - VM Patcher is 100% deactivated
+
+         DPMI applications will only get analysed, when COMPATIBILITY_DPMI is
+          set to ON as well.
+
+         Currently the following bugs will get patched out:
+          - Turbo Pascal CRT Unit Run-Time error 200 bug
+             (Realmode and DPMI support!)
+          - M$ C Library "Division by Zero" bug
+             (encountered in some classic Lucas Arts games)
+
+  ====================
+  | vCOMPAT Anti-CLI |
+  ====================
+
+         This code will fix at least the following games:
+          - Alien Legacy (only with OS/2 eCS Nov 2002 or later kernel)
+          - Boppin'
+          - Comanche 3
+          - Death Rally
+          - DooM, DooM ][
+          - Gabriel Knight (VGA)
+          - Heretic
+          - Hexen
+          - Pandora Directive (may require new VDMA)
+          - Psycho Pinball
+          - Raptor
+          - Sam'n Max (gets fixed by COMPATIBILITY_DPMI)
+          - Strife
+          - Syndicate Wars
+          - Under a Killing Moon (may require new VDMA)
+
+         It will also make some games to work "a bit more". This means that
+          they may crash, but it's not the fault of Anti-CLI, but another bug.
+          - Broken Sword
+          - Gabriel Knight (VESA)
+          - Gabriel Knight 2
+          - UFO: Apocalypse
+
+  ===================
+  | vCOMPAT HISTORY |
+  ===================
+
+        v0.1b  - [+] Internal testcase release
+        v0.2b  - [+] First public beta release
+        v0.21i - [-] Find1st-Patch is now only applied on CD-ROM access
+                      (bug is in original MSCDEX actually)
+        v0.22b - [+] INT25h-Patch is now able to live with the "patched" INT25h
+                      done by IBM in their latest kernels (INT25h is supposed
+                      to be buggy, this bug was fixed by IBM, we are emulating
+                      it again)
+        v0.23b - [+] COMPATIBILITY_CDAUDIO got renamed into COMPATIBILITY_CDROM
+                      It includes all CD-ROM specific fixes and a new one, that
+                      caused some installation software to believe that A:
+                      would be a CD-ROM
+        v0.31b - [+] Magical VM Patcher hooks moved from VDM to VDD-space
+                 [+] DPMI Anti-CLI code included
+                 [+] DPMI Workarounds for application "bugs" (e.g. Sam'n Max
+                      and Alien Legacy)
+                 [+] Magical VM Patcher also removes DPMI Turbo Pascal CRT Unit
+                      bug
+
+  ===========
+  | CONTACT |
+  ===========
+
+        There are several ways to contact me, but you only get this one:
+         'kiewitz@netlabs.org'
+
+        Official homepage for all my stuff:
+         'http://ecomstation.ru/kiewitzsoft/'
+
+  ==========================
+  | GREETZ AND DEDICATIONS |
+  ==========================
+
+        I'm dedicating vCOMPAT to Gerd Kiewitz, my daddy.
+
+        I want to thank IBM for the great operating system called OS/2 and
+         Serenity Systems for releasing eComStation.
+
+        Special greetings to the IBM developer that fixed the INT25h bug :)
+
+ - Martin Kiewitz

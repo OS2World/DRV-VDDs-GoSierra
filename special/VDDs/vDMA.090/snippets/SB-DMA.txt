@@ -1,0 +1,67 @@
+Hello, all,
+
+As OS/2 gamers are painfully aware, perhaps the greatest stumbling
+block in running DOS games under OS/2 is sound support.  As amost
+*all* new games include relatively (when compared with earlier games)
+sophisticated support for many sound cards, and considering that
+music/sfx are becoming integral to the gaming experience, we need to
+do whatever we can to aid developers in writing DOS applications that
+access the sound resources in such a way as to run under OS/2 in a
+sanguine manner.  Well, I really want *native*-OS/2 games, but until
+that time, running DOS games in VDMs will have to suffice.
+
+We *must* provide information about DOS support in OS/2, especially
+considering most developers don't have an OS/2 workstation on which
+to test their apps.  To get this effort going, here is a post from
+Joshua Jensen, the author of the sound module of Epic Pinball.  Epic
+Pinball 1.0, released in the Fall of last year, ran acceptably on my
+2.1GA system at home with a PAS-16 soundcard (the same cannot be said
+for many other users, however).  Unfortunately, the new release,
+which, having played it under DOS, incorporates a much better
+sounding engine that does *not* seem to work under OS/2.  Note that
+this incompatibility only includes SoundBlaster and clones - GUS
+users seem to have lucked out.  (Clarification: MASI is Josh's sound
+module in Epic Pinball 2.0.)
+
+================================================================================
+From: sl859@cc.usu.edu
+Newsgroups: comp.os.os2.games,comp.sys.ibm.pc.games.misc
+Subject: Re: Epic Pinball 2.0 under OS/2 2.1[0|1] is a no go
+Message-ID: <1994May27.131207.20518@cc.usu.edu>
+Date: 27 May 94 13:12:07 MDT
+References: <2rrfs3$slm@lo-fan.jpl.nasa.gov> <1994May23.233322.20165@cc.usu.edu>  <2s2uu4$d6r@deadmin.ucsd.edu>
+
+> The problem seems to be that DOS sessions under OS/2 are more limited
+> in the number of interrupts per second the OS can service.  Could you
+> provide Epic with different versions of MASI that would trade off
+> digitized sound quality for number of interrupts per second?
+
+OK, OS/2 gurus... I've scanned my code like none other now, and cannot see what
+could be the problem... so, here goes... here's how Epic Pinball and MASI work. 
+Note this is for SB only, since Ultrasounds don't seem to have a problem.
+
+1) MASI is inited.  It wedges itself into the IRQ you specified in the setup
+   program.  The only code that exists in here is simply to restart the DMA
+   buffer.  The DMA buffer is looped (ORed with a 58h on output to the DMA
+   control), so it is NOT resprogrammed inside this interrupt.  Just a simple
+   Sound Blaster command to restart output is done.  The DMA buffer is 2k
+   long, which is more than sufficient.  On End Of DMA transfer, it calls this.  
+   It tells the Sound Blaster (and this is perfectly legal) to output 64k worth
+   of information.  This means that you'll get an End of DMA interrupt every 
+   32 loops through the buffer.  At 22000 hz, you'll interrupt every 3 or so
+   seconds.
+2) Epic Pinball is inited.  It installs a vertical retrace handler on the timer
+   interrupt that is programmed for 70? hz (or 60).  Inside this interrupt,
+   it performs retrace handling AND it calls a MASI routine, mPoll.
+3) mPoll polls the next part of the buffer.  In order to be called at any time
+   without distorting the sound, it must be called at 22000 hz at least every
+   1/10th of a second, I believe (no calculator).  It reads from the DMA 
+   controller the position in the buffer the DMA is currently at.  Then, it
+   takes the last stored position from the DMA buffer from the last poll 
+   and subtracts them from each other to determine how many bytes need to be
+   mixed.  This is where I think it might be locking up on... if the DMA
+   controller is not returning appropriate values for this under OS/2.
+4) Polling is done and control is returned to the calling process.
+
+
+---------------------------------------

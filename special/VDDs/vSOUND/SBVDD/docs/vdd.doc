@@ -1,0 +1,796 @@
+.*	SCCSID = @(#)vdd.doc	13.7 89/10/19
+.* symbol definitions
+.im ..\..\equate.sci
+.im ..\..\macros.sci
+:h3.Virtual Device Driver Architecture
+:h4.Problem Description/Objectives
+.br
+:p.A Virtual Device Driver (VDD) is responsible for virtualizing a particular
+piece of hardware and associated ROM BIOS in the manner expected by a DOS
+application. It must do so in a compatibile fashion, with minimal performance
+degradation, and without compromising the integrity of the system.
+To achieve a certain level of hardware independence, a VDD may communicate
+with a Physical Device Driver (PDD, a.k.a. an OS/2 Device Driver) to interact
+with hardware.	At a minimum, this can serve to mask the differences between
+an ISA, MCA, and EISA hardware.
+.***
+.***
+.***
+:h3.Design Goals
+:p.The responsibility of a VDD is to manage I/O ports, device
+memory, and ROM BIOS services for the device(s) which it virtualizes.
+
+:h4.Hardware compatibility
+.br
+The key rule here is that the VDD should behave, as much as is possible,
+exactly like the physical hardware.  Straying from this rule is likely
+to result in incompatible emulation.
+
+.rc 1 on
+:h4.Hardware independence
+.br
+Where possible, the VDD should use a PDD to manipulate hardware.  This
+is the case for VKBD, VMOUSE, VLPT, VCOM, VDSK, and VTIMER.  VVIDEO, on the
+other hand, talks directly to the video hardware, as this is the only way to
+acheive excellent performance.
+.rc 1 off
+
+:h4.ROM BIOS compatibility
+.br
+Where possible, the VDD should let the ROM BIOS code on the system
+do its work.  The VDD achieves virtualization by emulating I/O port
+and device memory operations.
+
+The exception to this guideline is where the performance degradation
+due to I/O and interrupt trapping is unacceptable.  For example, the
+Video VDD intercepts the ROM BIOS video interrupt (INT 10h, usually)
+and performs the requested operation directly.
+
+:h4.DOS Compatibility
+.br
+In general, if a VDD does a good job of virtualizing the hardware and
+ROM BIOS, DOS compatibility will just fall out.  There may be cases
+where some understanding of DOS kernel or application behavior can
+make the VDD exhibit better performance characteristics.
+
+.rc 1 on
+For example, there is a fast-path call from the DOS CON (console)
+device driver to the video VDD which speeds up writing to the screen.
+Because of this, &cr. is 3-6 times faster than DOS when TYPEing a file in
+COMMAND.COM.  To maintain compatibility, however, this method is used only
+when the ROM BIOS INT 10h (video) vector has not been hooked by code
+in the &vdm..
+.rc 1 off
+
+:h4.Performance and Size
+.br
+Memory is a precious resource, so VDDs should attempt to minimize the
+amount they consume.  The dword-granular VDHAllocMem makes it convenient
+to allocate only as much memory as is required for a particular use,
+so VDDs need not reserve arrays of per-VDM structures (as PDDs did in
+286 OS/2 because they had no choice).  VDHAllocPages can be used
+to allocate swappable memory, so a VDD need not increase the amount
+of resident space consumed.  VDDs should use initialization code and
+data objects for work that is only done at VDD installation.  Resident
+memory should only be used for code and data that must be accessible at
+hardware interrupt time (i.e., when called by a Physical Device Driver
+
+Performance is an especially important concern because of the inescapable
+overhead of trapping from V86 mode to Ring 0 on ALL software interrupts
+and on hooked I/O ports.
+
+A VDD designer should pinpoint those areas of a VDD that must be fast,
+and then orient the design around those areas.	Performance-critical
+code should be written in assembler.  Any other code should be written
+in C to maximize maintainability and portability.
+
+:h4.Protection
+.br
+A VDD is inherently protected from a VDM because it is not visible
+in the VDM address space.  However, a VDD must be careful to check
+all parameters coming in from a VDM to ensure that it does not damage
+itself or some other part of the system.
+
+When a VDD detects an invalid operation, it should kill the offending
+VDM.  The section below on VDD Errors provides specific recommendations.
+
+A VDD may also receive parameters from an OS/2 application via
+DosRequestVDD.	The VDD must use VDHLockMem to verify the addressability
+of OS/2 application buffers.
+
+The kernel preserves only EBX, ESI, EDI, EBP, DS and ES across
+VDH service calls.  Similarly, VDDs must preserve those registers
+whenever they are called by the kernel, regardless of whether the
+call is to a C hook or an assembly hook.  In general, EAX, ECX, EDX,
+FS, GS and FLAGS should be considered volatile across any procedure
+call, with the exception of the Direction bit in the FLAGS register.
+On entry to and return from any procedure, the Direction bit must be
+clear, and CS, DS and ES must contain the Ring 0 selectors that map
+the FLAT code/data address space.  Page faults and other non-fatal
+exceptions and interrupts always preserve all registers.
+
+VDDs are not allowed to access any of the System Registers,
+including GDTR, LDTR, IDTR, TR, CR0-3, DR0-7 and many of the bits
+in the FLAGS register.	The only FLAGS bits a VDD may access are the
+Arithmetic bits, the Interrupt bit, and the Direction bit.  Care
+must be taken when clearing the Interrupt bit; it is a fatal error
+to attempt to execute code or access data that is not resident when
+interrupts are disabled.
+
+With regard to a VDM's registers as they exist on a VDM stack
+frame, they may be freely examined or modified, with the exception of
+the VDM's FLAGS, which should be modified with VDHSetFlags only.
+Direct modification, if required, must be restricted to the Arithmetic
+bits and the Direction bit.
+.*
+.rc 1 on
+.h4.Standard VDDs
+:p.These VDDs are supplied with &cr.&gml.
+.fo off
+    VDD      Description
+    -------- ----------------------------------------
+    vbios    BIOS - miscellaneous ROM BIOS support
+    vcmos    CMOS - manages CMOS data area
+   *vcom     Async
+    vdma     DMA
+   *vdsk     Disk - only for INT 13 copy-protection
+    vemm     EMM - LIM 4.0 Expanded Memory Manager
+   *vkbd     Keyboard
+   *vlpt     Printer
+   *vmse     Mouse
+    vnpx     NPX - Numeric Processor eXtension (80387)
+    vpic     PIC - Programmable Interrupt Controller
+   *vtimer   Timer
+    vvideo   Video - Depends on hardwar (VCGA, VEGA, VVGA, V8514, etc.)
+    vxms     eXtended Memory Specification
+
+   * = VDD which talks to corresponding PDD.
+
+.fo on
+.rc 1 off
+
+.***
+.***
+.***
+:h3.VDD Structure
+A VDD is a 32-bit EXE file.  It can have zero or more objects of the
+following types:
+:ol.
+:li.Initialization code
+:li.Initialization data
+:li.Swappable Global code
+:lp.There must be at least one object of this type.
+:li.Swappable Global data
+:li.Swappable Instance data
+:li.Resident Global code
+:li.Resident Global data
+:li.Resident Instance data
+:eol
+:p.The resident objects should be used only for code and data that
+must be accessible at physical hardware interrupt time (when a PDD
+calls the VDD).  A VDD which does not interact with a PDD needs
+no resident objects (VVIDEO, VEMM, and VXMS are such VDDs).
+
+.*
+:h4.VDD EXE Object Limitations
+.br
+In order to support interaction with 16-bit PDDs, VDD data objects are
+limited to 64Kb in size.  This allows the VDM manager to conveniently
+allocate 16-bit selectors to map the data, and makes the translation
+from 0:32 pointers to 16:16 pointers very efficient.
+
+Multiple objects of each type are allowed, and dynamically allocated
+objects can be larger than 64K, so this restriction should not be
+too severe.
+
+.***
+.***
+.***
+:h3.Environment
+Though VDDs execute at Ring 0 along with the kernel, PDDs, FSDs, and
+other Ring 0 components, they are logically isolated to a specific
+view of the system.
+:h4.Memory
+.br
+The VDM private address space starts at linear address 0, and may
+grow upwards until it runs into the system address space.  The first
+1Mb+64Kb of the VDM address space is the "v86 address space".  This
+is the area where the DOS Emulation Kernel and DOS Applications
+reside, as dictated by the v86 mode of the 80386.
+
+The "system area" is global address space that starts at 4Gb and
+grows downward.  System area memory objects are addressable in
+*any* process context(be it a &vdm. or an OS/2 process), whereas private area
+memory is addressable only in the context of the particular process (but see
+the discussion of HVDM below for an exception).
+.*
+:h4.HVDM - VDM Handle
+.br
+Each VDM is uniquely identified by a VDM handle.  This is a linear
+address in the system area which aliases the first 4Mb of the
+VDM.
+
+The HVDM is used on many of the VDH calls to indentify a particular
+VDM.  It may also be used to address per-VDM data when the target
+VDM is not current process.  This is especially convenient for
+accessing VDD instance data, which the VDM Manager locates below
+the 4Mb boundary (but above the v86 address space!) to allow for
+out-of-context access.	For example, this allows the keyboard VDD
+to have access to a per-VDM buffer at physical hardware interrupt
+time regardless of which process is currently running (assuming
+this per-VDM buffer is in a resident object!)
+.*
+:h5.Stack
+.br
+The VDD executes on one of two stacks, depending upon whether it
+is executing at "task-time" or "interrupt-time".
+
+Task-time is the common case, where the VDD has received control
+due to a trap from v86 mode.  In this case, the VDD is running
+on the "kernel stack" of the VDM which caused the trap.  Due to
+the large amount of 16-bit code in the kernel, ESP must be below 64K
+so that SS&gml.SP and SS&gml.ESP always point to the same physical memory.
+
+The SStoDS macro *must* be used when passing the address of a frame
+(automatic) variable in a function call, since 32-bit code assume SS==DS.
+
+Interrupt-time occurs when the system is processing a physical
+hardware interrupt.  The only way for a VDD to get control at interrupt
+time is to be called by a PDD with which it had set up communication.
+At this time, the VDD will be executing on the "interrupt stack" which
+is maintained by the kernel.  This stack is also limited to ESP being
+less than 64K, since 16-bit PDDs must be able to work with SS&gml.SP.
+
+:h5.Segment registers
+.br
+VDDs are compiled such that SS is assumed to always be equal to DS.
+The Ring 0 DS and SS are not equal, though (see above), so VDDs
+must behave peculiarly in certain situations.
+
+In C code, the only time this difference matters is when passing
+pointers to automatic variables to another function.  The SStoDS()
+function/macro must be called to convert the SS-relative 32-bit
+offset to a DS-relative 32-bit offset.	This applies to LocalVars
+in MASM code as well.
+
+In MASM, the programmer must be explicitly aware that SS != DS and
+avoid any incorrect code.  In most cases, if MASM code is written
+in a fashion similar to C (with LocalVars), the SStoDS() macro
+should be the only special technique required.
+
+The VDD must also understand segment registers when passing parameters
+to 16-bit PDDs.  Please see the section below on VDD/PDD interaction for
+details.
+.***
+.***
+.***
+:h3.VDH Services
+The VDM Manager supplies a set of Virtual Device Help (VDH) services
+to provide an abstract but efficient means for VDDs to interact with
+VDMs and with the OS/2 kernel.
+
+VDH Services have the following characteristics:
+:ol.
+:li.Are available via dynamic linking.
+:li.Use the 32-bit PLM calling convention.
+:li.A return value of 0 (FALSE) usually means the call failed.
+When FALSE is returned, calling VDHGetError will return a detailed
+error code.  If VDHGetError returns FALSE, then the last call
+succeeded, and 0 was a meaningful return value (not an error).
+:lp.A return value of non-zero (TRUE) means the call succeeded.
+:lp.These return value semantics allow us to reduce the parameter
+count by one in many cases, thus improving the speed of the call.
+:li.All pointer parameters are 0:32 flat pointers.
+:eol.
+
+.br
+:p.The following services are used to manage page granular
+blocks of linear space on behalf of a VDM&gml.
+:ul compact.
+.rc 1 on
+:li.VDHFindFreePages - find a region of free linear space below 1M+64K
+:li.VDHReservePages - reserve region of linear space below 1M+64K
+:li.VDHUnreservePages - unreserve region of linear space below 1M+64K
+:li.VDHQueryFreePages - determine amount of free virtual memory
+.rc 1 off
+:li.VDHMapPages - map allocated pages into reserved region
+:li.VDHInstallFaultHook - install hook for page faults
+:li.VDHGetDirtyPageInfo - read (and clear) dirty page bits
+:li.VDHAllocPages - allocate linear space and commit backing store
+:li.VDHReallocPages - grow/shrink previous page allocation
+:li.VDHFreePages - free previous allocation
+:eul.
+
+These are intended to be used together in the following ways, which match
+the needs of VDDs:
+
+:ul
+:li.Reservation and Mapping
+:li.Reservation and Allocation/Reallocation/Free
+:li.Allocation/Reallocation/Free
+:eul.
+
+:h4.Reservation and Mapping
+.cp 18
+.fo off
+
+    +-----------------+
+    |	  4K page     | \
+    +-----------------+  |
+    |	  4K page     |  |
+    +-----------------+  |
+    |		      |   \
+	. . .		  / Reserved Region
+    |		      |  |
+    +-----------------+  |
+    |	  4K page     |  |
+    +-----------------+  |
+    |	  4K page     | /
+    +-----------------+
+
+    Status of each page (invalid, black hole, mapped to physical memory,
+    mapped to linear memory) is independant of every other page.
+
+.fo on
+
+:p.In this scheme, the VDD calls VDHReservePages to reserve a range of
+linear addresses.  These are usually associated with a memory-mapped
+hardware device (for example, the Video VDD reserves the video RAM range),
+although the LIM emulation VDD uses this same technique to simulate
+hardware paging.
+:p.Next, the VDD will use VDHAllocPages to allocate memory which is can
+then be mapped into the reserved region using VDHMapPages.
+:p.EXAMPLE: When a VDM is in the background, the Video VDD will have
+allocated a virtual screen buffer, and maps the reserved range to that
+virtual buffer.  When the VDM is brought to the foreground, the video VDD
+will map the reserved range to the physical video RAM, allowing the
+application to update the video display directly.
+:p.VDHInstallFaultHook is used to trap a VDM that touches an invalid page
+(mades so by VDHMapPages).  For example, the video VDD uses this to detect
+when a DOS application has touched video RAM while in a graphics mode, at
+which point the DOS application is frozen.
+:p.VDHGetDirtyPageInfo is used to get the dirty page bits (which indicate
+whether a page has been written to).  For example, The video VDD uses this to
+determine what video RAM has been modified so that it need save only those
+pages of video RAM that have been changed.
+
+
+:h4.Reservation and Allocation/Reallocation/Free
+.cp 20
+.fo off
+
+    +-------------------+
+    |			| \
+    |  Remainder Block	|  |
+    |			|  |
+    +-------------------+  |
+    |			|   \
+    |			|   / Reserved Region
+	. . .		   |
+    |			|  |
+    | Reallocated Block |  |
+    |			| /
+    +-------------------+
+
+    A linear region in the range 0..4Mb is reserved, and memory is
+    allocated/reallocated from the bottom.
+
+.fo on
+:p.In this scheme, the VDD calls VDHReservePages to reserve a range of
+linear addresses.  Later, the VDD uses VDHAllocPages, VDHReallocPages,
+and VDHFreePages to control the amount of memory actually allocated.
+Memory can only be allocated from the bottom of the region.
+:p.This scheme is useful when a VDD wants to allocate memory that can
+be accessed via the HVDM in any task context, but wants to change the
+amount of memory allocated, AND does not want to start with the largest
+allocation initially.
+:p.EXAMPLE: The Video VDD reserves a region below 4Mb large
+enough to hold all of video RAM (256K on a VGA), and then calls
+VDHAllocPages to allocate the smallest amount needed.  When a VDM is
+brought to the foreground, the Video VDD calls VDHReallocPages to
+grow the allocation to the full size of the reservation.  When a VDM is sent
+to the background, the Video VDD saves the physical video RAM to the
+buffer.  If the video card was in a text mode, most of the buffer will be
+unused, so VDHReallocPages is called to shrink the buffer down (to 16K,
+usually).
+
+
+:h4.Allocation/Reallocation/Free
+.cp 20
+.fo off
+
+    +-------------------+
+    |			| \
+    |  Remainder Block	|  |
+    |			|  |
+    +-------------------+  |
+    |			|   \
+    |			|   / Original Allocation
+	. . .		   |
+    |			|  |
+    | Reallocated Block |  |
+    |			| /
+    +-------------------+
+
+    An allocation can be shrunk and grown, within the size
+    of the original allocation.
+
+.fo on
+:p.In this scheme, an allocation is made anywhere in linear memory.
+At some later time, the allocation can be shrunk with VDHReallocPages.
+At some even later time, VDHReallocPages can be used to grow the
+allocation.  As long as the requested growth does not cause the
+allocation to exceed its original size, the growth will succeed
+(assuming there is sufficient swap space available) without
+changing the allocation start address.
+:p.This scheme is generally used outside of the VDM address space,
+though VBIOS calls VDHAllocPages to allocate the DOS arena memory.
+In this case, VDHReallocPages is never called.
+
+.***
+.***
+.***
+:h3.Ring 0 details
+This section discusses the special aspects of VDDs that are a result of
+running at Ring 0.
+
+VDD code is always executed at Ring 0.	Since code executing at Ring 0 has
+full access to all CPU instructions, the VDD has a special responsiblity to
+be careful to manipulate only resources that belong to it.
+.*
+:h4.Kernel mode and Scheduler preemption
+.br
+Prior to giving a VDD control, the VDM Manager always "enters kernel mode".
+This operation involves setting the "InDos" flag and a few other state
+variables used by the Interrupt Manager and the Scheduler.  They key
+feature of "being in kernel mode" is that the thread of execution is
+*not preemptible*.
+
+For example, if a VDD executed the following code
+:xmp.
+
+    foo:    jump    foo     ; loop forever
+
+:exmp.
+the system would effectively stop.  That is because the system will not
+schedule another thread while the InDos flag is set.
+.*
+:h4.Preemption latency concerns
+.br
+The OS/2 Performance Requirements (see ???) require that, from the point
+when a new, highest-priority thread becomes runnable, until the point
+the thread receives the CPU, no more than a fixed amount of time may
+elapse (see ???).  The purpose of this restriction is that it ensures
+that the system remains responsive to user interaction.
+
+A more reasonable example of actual VDD behavior that could cause
+excessive dispatch latency is copying large chunks of memory.  The
+Video VDD does this when it does video memory save/restore operations
+during screen switching.  The EMM VDD does this in response to certain
+EMM function calls.
+
+.rc 1 on
+In order to avoid excessive dispatch latency, a VDD can use the
+VDHYield services.  This allows other threads to run.  The VDHCopyMem and
+VDHExchangeMem services can be used if a VDD wishes to let the kernel
+worry about this.  These are recommended except in cases where some
+special operations are required (as is the case when the Video VDD is
+saving/restoring video memory, where the storage formats are different
+between normal RAM and video RAM).
+.rc 1 off
+
+:h4.Interrupt latency concerns
+.br
+The OS/2 Performance Requirements (see ???) require that interrupts
+be disabled or postponed for no more than a fixed amount of time
+(see ???).  The purpose of this restriction is that it ensures
+that the system does not lose hardware interrupt events.
+
+VDDs do not receive hardware interrupts directly; they may only execute
+at interrupt time when called by a PDD which is at interrupt time.
+VDD code executed at interrupt time must work speedily and return to
+the calling PDD.
+
+Many of the VDH services are not available at interrupt time, since
+they involve operations that may block.  Blocking (i.e., waiting for
+an event to occur or a semaphore to be released) is not possible at
+interrupt time because the system has no way to switch to another
+thread.
+
+In general, a VDD should postpone any time-consuming
+work to task time using VDHArmContextHook.
+
+.*
+.***
+.***
+.***
+:h3.Initialization
+:h4.VDD Initialization in the context of System Initialization
+.br
+VDDs are loaded and initialized after all PDDs are loaded and
+initialized, but before the Shell is started.
+:h4.VDD loading
+.br
+The VDM Manager calls the loader to load VDDs.	"Base" VDDs are loaded
+first, followed by "Installable" VDDs.	"Base" VDDs are those identified
+in OS2LDR that must be present for MVDM to function.  "Installable"
+VDDs are those specified in "device=" lines in CONFIG.SYS.  MVDM is
+still operable if any or all of these fail to load.
+
+The VDD entry point is called after the VDD is loaded.	The VDD
+returns TRUE to indicate a successful load, and it returns FALSE
+to return an unsuccessful load.
+
+:h4.Installing user hooks
+.br
+Each VDD must use VDHInstallUserHook to install a VDM_CREATE
+hook.  VDDs that care about foreground/background
+(video, kbd, and mouse) would also install VDM_FOREGROUND and
+VDM_BACKGROUND hooks.
+:h4.Allocating global resources
+:p.Any global resources should be allocated at this time.
+.br
+.***
+.***
+.***
+:h3.Handling VDD Failures
+:h4.VDM Termination
+
+When the VDM_TERMINATE hook is called, the VDD is responsible for
+freeing all resources allocated by the VDD on behalf of the
+terminating VDM.  Please refer to the section titled VDM TERMINATION
+IMPLICATIONS in the individual VDH service function headers to
+determine if the VDD is responsible for cleanup, or if it is done
+automatically by the VDM Manager.
+
+.*
+:h4.VDDs and Errors
+VDDs can experience the following kinds of errors, and should react
+in the prescribed manner.  The examples below are intended to convey
+the spirit of how a VDD might experience these errors, but these
+examples do not necessarily describe the actual behavior of the
+VDDs.
+.fo off
+
+1)  Error returned from a VDH service
+    EXAMPLE:
+	A call to VDHAllocMem returns 0, meaning that the
+	memory allocation request cannot be satisfied
+
+    RESULT:
+	The VDH service returns a failure indication (FALSE).
+
+    REQUIRED VDD BEHAVIOR:
+	During VDD initialization:
+	    The VDD must fail initialization.  It does this by
+	    cleaning up any resources already allocated, and
+	    then returning FALSE.
+
+	During VDM creation:
+	    The VDD must fail the VDM creation.  It does this by
+	    cleaning up any resources already allocated, and
+	    then returning FALSE.
+
+	After VDM creation, during a "failable" operation:
+	    The VDD must fail the operation.  A "failable"
+	    operation is one, initiated by V86 code, that
+	    can be failed in a manner such that the v86 understands
+	    the operation failed.
+
+	    EXAMPLE:  The first OUT to a printer port may
+		      require the allocation of a print buffer.
+		      If that allocation fails, the VDD can
+		      set some state flags such that the DOS
+		      application can determine that the printer
+		      is not available.
+
+	After VDM creation, during an "unfailable" operation:
+	    The VDD must ask the user what to do.
+	    An "unfailable" operation is one, initiated by V86 code,
+	    that cannot be failed in a manner such that the v86
+	    understands the operation failed.
+
+	    EXAMPLE:  This should be a very rare event.  No example
+		      is readily apparent.
+
+	    The VDD should call VDHPopup to tell the user
+	    what happened, and ask what to do.	The allowed
+	    responses should be RETRY (after the user had
+	    tried to fix the problem) and ABORT (when the user
+	    cannot fix the problem).  In the ABORT case,
+	    the VDD should call VDHKillVDM and return, causing
+	    the VDM to be killed.
+
+2)  Bad parameter passed to a VDH service
+    EXAMPLE:
+	Calling VDHFreeMem on an address which was not allocated
+	by DosAllocMem.
+
+    RESULT:
+	The VDM Manager halts the system.
+
+	This error can occur only as a result of a coding defect in a
+	VDD, so returning an error to the VDD is useless.  Furthermore,
+	since the VDD is bad, it impossible to localize the error in any
+	one VDM, or be certain it has ot effected kernel system
+	structures.
+
+3)  Internal VDD consistency failure
+    EXAMPLE:
+	A VDD with a large amount of internal state may find (due
+	to a coding defect) that its state is inconsistent.
+
+    RESULT:
+	The VDD informs the user of the error, and then either
+	terminates the VDM or halts the system.
+
+    REQUIRED VDD BEHAVIOR:
+	If the VDD can localize the error to a single VDM, that
+	VDM should be terminated with VDHKillVDM.
+
+	If the VDD cannot localize the error to a single VDM,
+.rc 1 on
+	then the system should be shutdown with VDHHaltSystem.
+	PLEASE NOTE: This is VERY unfriendly behavior.	A released,
+	retail VDD should never call VDHHaltSystem.
+.rc 1 off
+
+
+4)  Illegal operation by a DOS application
+    EXAMPLE:
+	A DOS application does an OUT instruction to a port
+	controlled by the Disk VDD.  The Disk VDD does not
+	support hardware control of the disk controller.
+
+    RESULT:
+	The VDD informs the user of the error, and then either
+	retries the operation, ignores the operation, or
+	terminates the VDM.
+
+    REQUIRED VDD BEHAVIOR:
+	The VDD must inform the user of the problem via VDHPopup
+	and get a response back.  The VDD will either retry or
+	ignore the operation, or terminate the VDM with VDHKillVDM.
+.fo on
+.*
+:h4.DOS Emulation
+.***
+.***
+.***
+:h3.VDM Creation
+Every VDD will want to call VDHInstallUserHook to get notified of
+VDM creation and termination.  These notifications allow the VDD
+to initialize the virtual hardware state at VDM creation, and
+to clean up any per-VDM resources at VDM termination.
+:h4.Allocate per-VDM dynamic data
+This is rarely necessary, since VDD instance data is usually sufficient
+for per-VDM data needs.
+
+A better solution is usually to avoid allocating dynamic per-VDM data
+until it is necessary.	For example, the EMM VDD uses this approach
+to manage EMM space, which can grow to megabytes in size.  Instead
+of allocating the maximum amount at VDM creation (which would
+consume horrendous amounts of swap space and slow down VDM creation
+amazingly), it allocates memory as needed.
+
+:h4.Hook I/O ports
+This should be done immediately at VDM creation.
+
+.rc 1 on
+:h4.Reserve device memory linear address space
+This should be done immediately at VDM creation, to ensure that
+the device can appear in the VDM.  The video VDD does this, for example.
+.rc 1 off
+
+:h4.Hook page faults
+This should be done immediately at VDM creation, if the device
+being virtualized has device memory on the address bus (e.g., a
+video controller).  Note that the range where page faults are hooked
+should have been reserved with VDHReservePages.
+
+:h4.Hook software interrupts
+This is generally necessary for VDDs that intercept ROM BIOS interrupts.
+
+:h4.Install DOS device driver stubs
+This is necessary for VDDs that must supply a "fake" DOS device driver.
+This can only be done at VDM creation time.  After that point, the
+DOS Emulation component has control over the DOS heap.
+
+.rc 1 on
+:h3.VDM Termination
+At VDM termination, all termination hooks registered with VDHInstallUserHook
+are called.  The VDD at this time should free any globabl resources associated
+with the terminating &vdm., and should break any connections with PDDs or
+the shield layer, as appropriate.
+
+:h3.VDM Session Switching
+A VDD can register hooks to be called when a &vdm. is switched between
+foreground and background.  See the section on the video VDD for
+details about session switching.
+
+.*** :h3.Interacting with a VDM
+.*** :h4.Software Interrupts
+.*** :h4.Hardware Interrupts
+.*** :h4.Memory
+.*** :h4.I/O ports
+.*** :h4.Calling, Jumping to, vectoring to VDM code
+.***
+:h3.Interacting with another VDD
+Since dynamic linking is supported between VDDs, a solution which calls
+for multiple VDDs can support inter-VDD communication via dynamic links.
+
+In the case where these VDDs supplied by multiple parties, and where
+it is not required that all of the VDDs in the "set" be present, dynamic
+linking will not work.
+
+The VDH services VDHOpenVDD, VDHRequestVDD, and VDHClose VDD are used
+use to overcome this limitation of dynamic linking.
+
+.***
+.***
+.***
+:h3.Interacting with a PDD
+Many VDDs virtualize hardware that generates interrupts.  Generally,
+these VDDs will have to interract with a PDD to fully virtualize the
+device.  VDHOpenPDD is used to establish communication between a VDD
+and a PDD.  This is done by exchanging entry points, which use the
+32-bit PLM calling convention.
+
+From that point, the VDD and PDD are free to communicate via whatever
+private protocol they choose, including exchanging register-based
+entry points.
+
+The VDD and PDD should also agree on a shutdown protocol that is
+used to stop the communication in the event the VDD needs to shutdown.
+
+.***
+.***
+.***
+:h3.Interacting with DOS emulation
+VDHAllocDosMem and VDHSetDOSDevice are used to allocate memory from
+the DOS memory heap and register a DOS device driver.  VDDs use
+these services to create "fake" DOS device drivers, e.g., EMM uses
+this to create a stub EMM DOS device driver because DOS apps may
+try opening the EMM device to determine if EMM is present.
+.*
+.rc 1 on
+:h3.Idle DOS Application Detection
+There is no standard API for a &dosapp. to call to inform DOS that
+the application is idle.  The &dosapp. spins in a loop waiting for
+something to happen.  When a keyboard or mouse event occurs, the
+&dosapp. takes an appropriate action, and then continues spinning.
+
+Since &dos. is a single-tasking system, this is not a problem.	In a multi-
+tasking system like &cr., however, this is a total waste of CPU time.
+
+The services VDHPostIdle, VDHWakeIdle, and VDHNotIdle
+allow VDDs to tell &cr. when a &dosapp. appears to be idle, and when there
+is some activity that is like to make the &dosapp. busy.
+
+For example, the keyboard VDD calls VDHPostIdle every time it gets a
+ROM BIOS Keyboard Peek (usually INT 16h, AH=01).  The mouse can do the
+same thing for mouse status requests (INT 33h, ??).  VDHPostIdle takes
+a single parameter, which is a "weight" for the amount of idleness.  &cr.
+adds up these weights, and if the sum exceeds a threshhold (calibrated for
+the CPU speed), the &vdm. is determined to be idle, and it is put to
+sleep for a few time slices.
+
+When a VDD detects that the &vdm. is busy, it calls VDHWakeIdle or
+VDHNotIdle.  If the &vdm. was sleeping as a result of VDHPostIdle, it
+is immediately woken up.  Otherwise, VDHWake/NotIdle do nothing.
+
+VDHWakeIdle is used at interrupt time, when the VDD is not
+necessarily in the context of the target &vdm..  For example, the
+keyboard and mouse VDDs make this call when they get an event from the
+Shield (the &vdm. is running in a window) or from the corresponding PDD
+(the &vdm. is running full-screen).
+
+VDHNotIdle is used at task time in the context of a VDM.  This is a
+very fast call that resets the VDHPostIdle total, to prevent the VDM
+from being put to sleep.  This call is used sparingly, at key points,
+to ensure that &dosapps. with special behavior are not incorrectly
+determined to be idle.	For example, the video VDD can occasionally
+make this call when it detects the screen has been updated.  This
+allows an app that alternately polls the keyboard and writes to the
+screen to continue to run.
+.rc 1 off

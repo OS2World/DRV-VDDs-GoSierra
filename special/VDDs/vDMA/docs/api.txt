@@ -1,0 +1,60 @@
+The new VDMA-API is quite simple, still one is able to 100% virtualize a DMA
+ channel that way. VDMA always has control over the I/O ports.
+
+For registering with VDMA, one has to use the VDHRequestVDD API using command
+0-7 for registering DMA-Channel 0-7. Registering a DMA-Channel is only possible
+during sysinit. Also only one VDD may register with each DMA-Channel.
+InputRequestPacket is the caller-handler of the registering VDD.
+OutputRequestPacket will get filled with the VDMA entrypoint for that DMA-
+channel.
+
+We don't use the standard VDD-API arguments for the caller-handlers, especially
+because of speed issues (DMA emulation can be quite CPU intensive internally).
+
+VDMA calls the registered handler, when a VDM starts/stops DMA transfer.
+
+
+VDHRegisterDMAChannel
+
+VDMA calls the registered handler, when a VDM application starts/stops DMA
+ transfer. It also calls the handler, if the application reads out "CurLength"
+ port to find out where the DMA is currently.
+
+All those events are added to the existing API. The existing API is not
+ supported at all, because actually it does not make any sense. It's not
+ possible to unhook I/O ports for one DMA channel, because there are several
+ ports that react on 4 aligned DMA channels. Unhooking those will result in
+ serious issues and still staying hooked means that the VDM application won't
+ get accurate virtualized DMA transfers.
+
+Because we need to transfer some parameters to the registered VDD, we are using
+ a stack trick. 2 DWORDs were the previous parameters and those are removed
+ from stack by the called function. Now we push another 3 DWORDs to the stack
+ and those are removed by VDMA. In that way one may access those parameters,
+ but ONLY when event id matches the new codes. Also I think doing this is only
+ possible using assembly.
+
+VDD_DMA_VIRTUALSTART  (ULONG Mode, ULONG VirtualAddress, ULONG TransferSize)
+VDD_DMA_VIRTUALSTOP   (ULONG Dummy, ULONG Dummy, ULONG Dummy)
+VDD_DMA_VIRTUALGETPOS (ULONG Dummy, ULONG Dummy, ULONG Dummy)
+
+The called function is supposed to return SUCCESS on VIRTUALSTART/VIRTUALSTOP.
+Replying FALSE on VIRTUALSTART means that the DMA transfer will get done by
+the real hardware.
+On VIRTUALGETPOS, the called function is supposed to return the bytes left to
+ transfer using a ULONG. The upmost bit (bit 31) is set, when terminal count
+ was reached during the last VIRTUALSTART/VIRTUALGETPOS call.
+
+ Note that "bytes left" means that the function is supposed to return actual
+ BYTE COUNTS and NOT DMA sized results.
+
+   Mode            db ?         ; Bit 0-1 - Transfer Type
+                                ; Bit 2   - Auto-Init Mode
+                                ; Bit 3   - Address decrement
+                                ; Bit 4-5 - Transfer Mode
+   BaseAddress     dd ?         ; Virtual Base-Address (Byte3=Page)
+   ; Temporary values for DMA I/O ports - only used temporary
+   TempDMASize     dw ?         ; DMA-Size of block (temporary only!)
+   TempDMAleft     dw ?         ; DMA-Left size of transfer (temporary only!)
+   ; Following counts are real BYTE-count, even on 16-bit DMA!
+   TransferSize    dd ?         ; Size of block in bytes

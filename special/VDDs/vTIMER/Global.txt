@@ -1,0 +1,95 @@
+
+Port 61h - Keyboard System
+ -> Bit 0 (timer 2 gate to speaker enable)
+ -> Bit 1 (speaker data enable) -> both set -> activate speaker
+ -> Bit 4 (toogles with each refresh request?!?!)
+ -> everything else R/O (standard 30h on input)
+  -> Bit 4 will toogle after each INPORT
+
+Port 40h - PIT counter 0 (counter divisor) - 18.2hz clock tick
+Port 41h - PIT counter 1 (RAM refresh counter) - READ ONLY!!!
+ -> Read is same as PIT counter 0
+Port 42h - PIT counter 2 (timer)
+ -> Send frequency after PIT mode port
+Port 43h - PIT mode port WRITE ONLY (read = FFh)
+ -> 10110110
+ -> bit 0 binary counter 16 bits
+ -> bit 3-1 square wave generator
+ -> bit 5-4 read/write counter bits 0-7 first, then 8-15
+ -> bit 7-6 counter 2 select (speaker!)
+
+ -> 36h 00110110
+ -> Bit 7-6 - counter 0 select
+ -> Bit 5-4 - read/write counter bits 0-7 first, then 8-15
+ -> Bit 3-1 square wave generator
+ -> Bit 0 binary counter 16 bits
+
+IRQ 0 (Interrupt 8) - System timer
+Interrupt 1Ch (System timer tick)
+
+New feature: Interrupt 70h (IRQ 8) CMOS REAL-TIME CLOCK (1024 times per second)
+
+Interrupt 15h (BIOS)
+ AH = 01h (????)
+ -> unset CF
+ AH = 04h (BUILD ABIOS SYSTEM PARAMETER TABLE)
+ -> set CF, AH=80h (unsupported)
+ AH = 78h (unknown)
+ -> set CF
+ AH = 87h (COPY EXTENDED MEMORY)
+ -> set CF and AH=1 (parity error)
+ AH = 88h (GET EXTENDED MEMORY SIZE)
+ -> unset CF and set AX = "XMS_MEMORY_LIMIT", if DOS_STARTUP_DRIVE set otherwise
+     set AX = 0
+ AH = 89h (SWITCH TO PROTECTED MODE)
+ -> AH=1 set carry
+ AH = C2h (IBM SurePath BIOS)
+ -> AH=1 set carry
+ AH = C3h (ENABLE/DISABLE WATCHDOG TIMEOUT)
+ -> unset carry
+
+
+InstallIntHook auf Interrupt 8:
+================================
+Sofern "protect 1C hook" (flVdmStatus, 40h)
+ -> Sofern flVdmStatus in VPM
+    -> VDHSWITCHTOVPM
+ -> VDMARMRETURNHOOK (RECURSIVE_CSEIP_HOOK)
+ -> VDHPUSHINT (Interrupt 1Ch)
+Ansonsten sofern DWORD [70h] ver„ndert (Realmode 70h handler)
+ -> PUSHREGS (109h)
+ -> PUSHINT (1Ch)
+ -> ARMRETURNHOOK (NORMAL_IRET)
+Ansonsten
+VDHSENDVEOI
+VDHPOPINT
+
+ReturnHook bei Interrupt 1Ch:
+==============================
+Sofern flVdmStatus in VPM
+ -> Waren wir bereits bei der InstallIntHook im VPM?
+    -> ja, VDHSWITCHTOVPM
+ -> VDHSENDVEOI
+ -> VDHPOPREGS (109h)
+Ansonsten sofern DWORD [70h] ver„ndert (Realmode 70h handler)
+ -> VDHSWITCHTOV86
+ -> VDHPUSHREGS (109h)
+ -> VDHPUSHINT (1Ch)
+ -> VDMARMRETURNHOOK (NORMAL_IRET)
+Ansonsten
+ -> VDHSWITCHTOV86 (sofern davor Nicht VPM)
+ -> VDHSENDVEOI
+
+in jedem Fall VDHPOPINT
+
+
+VDHSIMULATEIRQ
+
+Simulate IRQ 8
+
+VDHOPENVIRQ (0,EOIHandler,IRETHandler,250,0)
+EOIHandler: VDHCLEARVIRR(0,VIRQHandle)
+IRETHandler: Check, if more IRQs were left out and issue them
+
+Issue IRQ0:
+VDHSetVIRR (VDMHandle, VIRQHandle)

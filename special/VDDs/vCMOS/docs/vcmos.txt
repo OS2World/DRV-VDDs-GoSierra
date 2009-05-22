@@ -1,0 +1,109 @@
+
+                         ===============================
+                          Martin Kiewitz's vCMOS v0.91b
+                         ===============================
+
+                             Released on 09.10.2002
+
+                        Written and (c) by Martin Kiewitz
+                            Dedicated to Gerd Kiewitz
+-------------------------------------------------------------------------------
+
+  ============
+  | FOREWORD |
+  ============
+
+        OS/2 / eComStation's VDM is nearly perfectly emulating a real DOS
+         session. Did I say nearly? Yes, I did.
+
+        The CMOS in standard PCs has a data area, that contains the basic
+         configuration of the computer like harddrive settings and so on.
+
+        For this area a virtual device driver is available from IBM, but the
+         driver allows VDM applications to *write* to that area without any
+         user notification. Also the CMOS realtime interrupt (IRQ8) is not
+         virtualized, so applications that need that IRQ will mostly get stuck
+         and won't work.
+
+        That's why I wrote a replacement driver for the VDD. The basic
+         operation was just easy and was done within minutes. My replacement
+         allows the user to choose wether to allow applications to access the
+         CMOS data area or to write-protect it (the latter one is default).
+         Also the CMOS realtime interrupt is now virtualized.
+
+  ======================
+  | vCMOS INSTALLATION |
+  ======================
+
+        Simply rename the original vCMOS.SYS in your MDOS directory
+         (e.g. x:\OS2\MDOS) and replace the vCMOS.SYS contained in
+         this package with it.
+
+        Do *NOT* modify your config.sys, because that driver is automatically
+         loaded by OS/2 / eComStation. It has *NOT* to be listed in config.sys.
+
+        For the CMOS-RTC interrupt, you WILL need the latest HRTX driver
+         installed to your system. It's a replacement for the TIMER0.SYS driver
+         from IBM. If you don't have it installed, vCMOS will still work, but
+         no interrupt virtualization will be done.
+
+  ====================
+  | vCMOS PROPERTIES |
+  ====================
+
+        CMOS_WRITE_PROTECTION (default ON):
+       -------------------------------------
+         If enabled, vCMOS will only allow VDM applications to access the data
+          that is stored in the CMOS data area. It will deny any writes. Some
+          software could require this protection to get removed, but most
+          should run fine with the protection switched on.
+
+         Note that CMOS-RTC registers are *ALWAYS* virtualized. No physical
+          access is possible at all on those.
+
+        CMOS_INTERRUPT (default ON):
+       ------------------------------
+         If enabled, vCMOS will generate RTC-IRQs (IRQ8), if requested by VDM
+          applications. This is the best setting, because of performance and
+          compatibility reasons.
+
+         If set to "ALWAYS", IRQ8 will get emulated in every VDM *even* if the
+          application does not need it. Use this feature with care!
+
+         This will feature will only work, when the latest HRTX
+          (high resolution timer) is installed on the system. Otherwise the
+          property will report this problem and the feature will not be
+          available.
+
+         This virtualization will fix at least the game "Archon".
+
+  =================
+  | vCMOS HISTORY |
+  =================
+
+        v0.9i  - [+] Internal testcase release
+        v0.91b - [+] First public beta release
+                 [+] Implemented IRQ8 virtualization through latest HRTX
+
+  ===========
+  | CONTACT |
+  ===========
+
+        There are several ways to contact me, but you only get this one:
+         'kiewitz@klinikum-konstanz.de'
+
+        Official homepage for all my stuff:
+         'http://ecomstation.ru/kiewitzsoft/'
+
+  ==========================
+  | GREETZ AND DEDICATIONS |
+  ==========================
+
+        I'm dedicating vCMOS to Gerd Kiewitz, my daddy.
+
+        I want to thank IBM for the great operating system called OS/2 and
+         Serenity Systems for releasing eComStation.
+
+        Special greetings go to Armin Sch„fer.
+
+ - Martin Kiewitz

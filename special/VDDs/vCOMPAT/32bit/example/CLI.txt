@@ -1,0 +1,6 @@
+
+9C58FA  -> PUSHFD, POP EAX, CLI
+into 9C58FB  -> PUSHFD, POP EAX, STI
+
+9CFA    -> PUSHFD, CLI
+into 9CFB    -> PUSHFD, STI

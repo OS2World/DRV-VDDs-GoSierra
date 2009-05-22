@@ -1,0 +1,83 @@
+RTC-Virtualisation:
+====================
+
+Register 0 - Seconds, in BCD (00h-59h) or in hex (00h-3Bh)
+ - Will reflect current time, read-only
+ <- VDHGSV_SECOND (0-59)
+
+Register 1 - Second Alarm
+ - Will be writeable, standard is 0FFh
+
+Register 2 - Minutes, in BCD (00h,59h) or in hex (00h-3Bh)
+ - Will reflect current time, read-only
+ <- VDHGSV_MINUTE (0-59)
+
+Register 3 - Minute Alarm
+ - Will be writeable, standard is 0FFh
+
+Register 4 - Hours, in BCD (00h-23h) or in hex (00h-17h) if 24hr
+                       BCD (01h-12h) or in hex (01h-0Ch) if 12hr am
+                       BCD (81h-92h) or in hex (81h-8Ch) in 12hr pm
+ - Will reflect current time, read-only
+ <- VDHGSV_HOUR (0-23)
+
+Register 5 - Hour Alarm
+ - Will be writeable, standard is 0FFh
+
+Register 6 - Day of Week
+ - 01-07, Sunday=1
+ <- VDHGSV_DAYOFWEEK (0-6)
+
+Register 7 - Date of Month
+ - BCD 01h-31h, Hex 01h-1Fh
+ <- VDHGSV_DATE (1-31)
+
+Register 8 - Month
+ - BCD 01h-12h, Hex 01h-0Ch
+ <- VDHGSV_MONTH (1-12)
+
+Register 9 - Year
+ - BCD 00h-99h, Hex 00h-63h
+ <- VDHGSV_YEAR (1980-xxx)
+
+Register 10 - Status Register A (read/write) (reset on 26h)
+ - Bit 7 - =1 time update cycle in progress (read only) == 0
+   Bit 6-4 -  010b = 32768 Hz time base (default)
+   Bit 3-0 - 0000b = none
+             0011b = 122 microseconds (impossible)
+             0100b = 244 microseconds (impossible)
+             0101b = 488 microseconds (impossible)
+             0110b = 976 microseconds (default) (1024 ticks per sec)
+             0111b = 1.9 milliseconds (512 ticks per sec)
+             1000b = 3.9 milliseconds (256 ticks per sec)
+             1001b = (128 ticks per sec)
+             1010b = (64 ticks per sec)
+             1011b = (32 ticks per sec)
+             1100b = (16 ticks per sec)
+             1101b = (8 ticks per sec)
+             1110b = (4 ticks per sec)
+             1111b = 500 milliseconds (2 ticks per sec)
+
+Register 11 - Status Register B (read/write) (reset on 02h)
+ - Bit 7 - enable clock setting by freezing updates (??)
+   Bit 6 - enable periodic interrupt (IRQ8 enable)
+   Bit 5 - enable alarm interrupt
+   Bit 4 - enable update-ended interrupt
+   Bit 3 - enable square wave output
+   Bit 2 - Data mode (0=BCD, 1=Binary)
+   Bit 1 - 24/12 hour selection - 1 enables 24hr mode
+   Bit 0 - Daylight savings enable
+           =1 enables automatic switch
+
+Register 12 - Status Register C (read only) (reset on 50h?!?!)
+ - Bit 7 - interrupt request flag =1 when any bit (6-4 in B are set)
+   Bit 6 - Periodic interrupt flag (confirmation?!?)
+   Bit 5 - Alarm interrupt flag
+   Bit 4 - Update-Ended Interrupt flag
+   Bit 3-0 - unused
+
+Register 13 - Status Register D (read only) (reset on 80h)
+ - Bit 7 - valid RAM (battery good)
+   6-0 unused (0)
+
+flVpmIRQHooks - Bit-Encoded hooked IRQs in VPM

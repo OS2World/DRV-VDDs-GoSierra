@@ -1,0 +1,9 @@
+- LFS/LGS opcodes with loading invalid selector (40h) are not emulated, but
+   LDS/LES are. Alien Legacy uses LGS opcode to load BIOS selector.
+
+- PGMarkNP calls 
+   if (pgPageToPd(page, pptda, ppd) == 0) {
+  correct way:
+   if (pgPageToPd(page, pptda, SSToDS(&ppd)) == 0) {
+
+- IRQ 8 (CMOS) is not emulated in VDM, used by Archon

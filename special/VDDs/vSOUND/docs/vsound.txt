@@ -1,0 +1,102 @@
+
+                        =================================
+                          Martin Kiewitz's vSOUND v0.1b
+                        =================================
+
+                             Released on 27.03.2006
+
+                        Written and (c) by Martin Kiewitz
+                            Dedicated to Gerd Kiewitz
+-------------------------------------------------------------------------------
+
+  ============
+  | FOREWORD |
+  ============
+
+        This is a VDD that lasted some time, not because it's so complicated,
+         but because I don't have much time to do it.
+
+        Yes, it's a VDD that is able to emulate a Soundblaster card.
+
+        Yet, it's only able to emulate but not output the sample data. This
+         means most people won't really need it at all. It's currently just
+         for checking, if the emulation code works properly. I still need to
+         route the sample data through John Gow's DTA interface.
+
+        As soon as routing is implemented, this VDD *WILL* require the vDMA
+         replacement as well as the DTA installed to MMOS/2.
+
+        Currently at least one is able to patch out Sierra On-Line sounddrivers
+         on-the-fly - if used in addition to vCOMPAT.
+
+        It's also fixing the VDM, so that it doesn't detect (some) movie
+         players as being some "idle phase" and so messing up the actual
+         playback.
+
+  =======================
+  | vSOUND INSTALLATION |
+  =======================
+
+        Simply copy VSOUND.SYS into your MDOS directory (e.g. x:\OS2\MDOS)
+         and insert this line into config.sys:
+         'DEVICE=x:\OS2\MDOS\VSOUND.SYS'
+         (where x:\ is your OS/2 / eCS boot-drive)
+
+        The location does not matter, but you should put vSOUND *PRIOR* to
+         vCOMPAT, otherwise they won't connect to each other.
+
+  =====================
+  | vSOUND PROPERTIES |
+  =====================
+
+        HW_SOUND_PASSTHRU (default OFF):
+       ----------------------------------
+         If enabled, vSOUND will emulate a soundblaster but try to forward
+          sound playback to a real Soundblaster existing on port 22xh.
+          Please note that detection IRQs will get emulated by vSOUND and will
+          not get forwarded to the real hardware. vSOUND will always emulate
+          IRQ5.
+
+        HW_SOUND_TYPE (default "Soundblaster 16"):
+       --------------------------------------------
+         Specifies the type of soundblaster, that is emulated. Choices are
+          "Soundblaster 16", "Soundblaster PRO", "Soundblaster" and "None".
+          Note: This does not change actual emulation, so 16-bit stereo is
+           available at any time.
+
+        HW_SOUND_MIXER (default ON):
+       ------------------------------
+         If enabled, vSOUND will forward mixer setting changes to real audio
+          hardware. This means that a VDM application may turn volume down.
+
+  =========================
+  | vSOUND Movie-Play fix |
+  =========================
+
+         This code will fix at least the following games:
+          Megarace
+          Strife (Intro movie)
+
+  ==================
+  | vSOUND HISTORY |
+  ==================
+
+        v0.1b  - [+] Internal testcase release
+
+  ===========
+  | CONTACT |
+  ===========
+
+        There are several ways to contact me, but you only get this one:
+         'kiewitz@klinikum-konstanz.de'
+
+        Official homepage for all my stuff:
+         'http://ecomstation.ru/kiewitzsoft/'
+
+  ==========================
+  | GREETZ AND DEDICATIONS |
+  ==========================
+
+        I'm dedicating vSOUND to Gerd Kiewitz, my daddy.
+
+ - Martin Kiewitz

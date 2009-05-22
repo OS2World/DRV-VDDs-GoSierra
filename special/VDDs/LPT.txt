@@ -1,0 +1,152 @@
+PRINT - vLPT v0.10b
+PRINT_SEPARATE_OUTPUT
+PRINT_TIMEOUT
+PRINT_REROUTELPT1 - LPT1:
+PRINT_REROUTELPT2 - LPT2:
+PRINT_REROUTELPT3 - LPT3:
+PRINT_VIRTUALDONGLE - (none) / "KONTRON"
+
+378h LPT1, 278h LPT2
+3BC-3BF, 378->37F, 278->27F
+-> NULL out ports Port+0x400->0x403 due ECP there
+-> NULL out xxBh port due EPP being there
+
+BIDI to input -> CONTROL to 0xE4
+                  Bit 7&6 - Reserved
+                  Bit 5 - bidirectional port
+                  Bit 2 initialize printer
+
+BIDI to output -> CONTROL to 0xC4
+                  Bit 7&6 - Reserved
+                  Bit 2 initialize printer
+
+278 - data
+279 - status
+       -> Bit 7 - =1 NOT Busy (no characters accepted, when =0)
+       -> Bit 6 - NOT acknowledged
+       -> Bit 5 - out of paper, when =1
+       -> Bit 4 - printer is on-line, when =1
+       -> Bit 3 - Printer error, when =1
+       -> Bit 2 - =1 IRQ has *not* occured
+       -> Bit 1&0 - 0
+27A - control - 9 -> strobe set, select printer (SLCT IN)
+       -> Bit 5 - =1 enable bidirectional port
+       -> Bit 4 - =1 enable IRQ
+       -> Bit 3 - =1 select printer (SLCT IN line)
+       -> Bit 2 - =1 initialize printer
+       -> Bit 1 - automatic line feed
+       -> Bit 0 - strobe
+
+PORT 03BC-03BF - PARALLEL PRINTER PORT (MDA's LPT1)
+Range:	PORT 0278h, PORT 0378h, or PORT 03BCh
+SeeAlso: MEM 0040h:0008h
+
+03BC  -W  data port
+03BC  R-  bidirectional port: input from connector
+	  unidirectional port: last value written to port
+03BD  R-  status port (see #P0658)
+03BE  RW  control port (see #P0659)
+
+Bitfields for parallel interface status port:
+Bit(s)	Description	(Table P0658)
+ 7	busy
+ 6	NOT acknowledge (approx. 5us low pulse)
+ 5	out of paper
+ 4	printer is selected
+ 3	*no* error
+ 2	IRQ has *not* occurred
+	(PS/2) printer returned -ACK
+ 1-0	reserved
+Note:	if bit 2 is clear (i.e. an interrupt has occurred), it is set again on
+	  reading the status register
+SeeAlso: #P0659
+
+Bitfields for parallel interface control port:
+Bit(s)	Description	(Table P0659)
+ 7-6	reserved
+ 7	(see PORT 037Bh bit 7)
+ 5	(PS/2) enable bidirectional port
+	(also requires enabling via PORT 0102h)
+ 4	enable IRQ (via -ACK)
+ 3	select printer (SLCT IN line)
+ 2	=0 initialize printer (-RESET line)
+ 1	automatic line feed
+ 0	strobe (must be set for minimum of 5 microseconds)
+SeeAlso: #P0658
+
+
+-----
+Send To Printer
+- write byte to data port
+- check, if printer busy (loop if it is)
+- Set Strobe to =0
+- After 5 ms set strobe to =1
+-----
+Receive from printer (nibble)
+- set CONTROL, bit 0 (strobe)
+- read status port and 0xF0 -> Bit 0-3 of final byte
+- set CONTROL, reset bit 0 (strobe)
+- read status port and 0xF0 -> Bit 7-4 of final byte
+- final byte XOR 0x88 to correct busy line bits
+-----
+oder
+- set CONTROL, bit 2 (initialize printer) reset bit 3 and bit 1&0
+- read status port and 0xF0 -> Bit 4-7 of final byte
+- read status port and 0x0F -> Bit 0-3 of final byte
+- final byte XOR 0x84 toggle bit 2 & 7
+
+  /*-----------------------------------------------*/
+  /* Take a 'quick' peek at BUSY to see if the     */
+  /* device can accept the next character.         */
+  /*                                               */
+  /* If the printer cannot immediately accept the  */
+  /* character, poll BUSY for 500us. If we cannot  */
+  /* send the character within this time, return   */
+  /* failure to the calling routine                */
+  /*-----------------------------------------------*/
+  do
+  {
+     /* We do not have a high resolution clock. */
+     if ( ++cIntervals > MAX_BUSY_WAIT_500NS_COUNT )
+     {
+       return( 1 );
+     }
+
+     pInst->StatusReg = IORead8( pInst->pIO[0], SPP_STATUS_REG );
+
+     pInst->StatusReg ^= SPP_STATUS_INVERT;
+
+  }
+  while ( (pInst->StatusReg & SPP_STATUS_BUSY) );
+
+  /*------------------------------------------------------*/
+  /* Write the character allowing 500ns for the parallel  */
+  /* bus to settle. Then form a 1us strobe pulse.         */
+  /*------------------------------------------------------*/
+
+  IOWrite8( pInst->pIO[0],
+            SPP_DATA_REG,
+            c             );
+
+  IODelay();
+
+  pInst->ControlReg |= SPP_CONTROL_STROBE;
+
+  if ( (pInst->Flags & F_NO_INTERRUPT) == 0 )
+    pInst->ControlReg |= SPP_CONTROL_ACKIRQ;
+
+  CLI();
+
+  IOWrite8( pInst->pIO[0],
+            SPP_CONTROL_REG,
+            (UCHAR)(pInst->ControlReg ^ SPP_CONTROL_INVERT));
+
+  IODelay();  /* 1 microsecond (1us) delay. */
+  IODelay();
+
+  pInst->ControlReg &= ~SPP_CONTROL_STROBE;
+
+  IOWrite8( pInst->pIO[0],
+            SPP_CONTROL_REG,
+            (UCHAR)(pInst->ControlReg ^ SPP_CONTROL_INVERT));
+

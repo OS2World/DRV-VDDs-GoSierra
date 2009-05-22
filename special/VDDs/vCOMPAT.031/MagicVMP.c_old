@@ -1,0 +1,41 @@
+VOID VCOMPAT_MagicVMPatcherInRM (PCRF pcrf) {
+   PULONG  StackPointer;
+   PUCHAR  OpCodePointer;
+   ushort  StackDepth = 0;
+   PUCHAR  SignaturePtr = 0;
+
+   return;
+
+   // If VDM running in Protected Mode -> Dont try VM-Patching!
+   if (flVdmStatus & VDM_STATUS_VPM_APP) return;
+   if (!PropertyVMPatcherON) return;
+
+   // First of all get up the stack and search for the actual INT 21h opcode
+   //  (CDh 21h at SS:SP-2), maximum depth 10 to take care of faulty stacks...
+   StackPointer = PFROMVADDR(SS(pcrf),SP(pcrf));
+   do {
+      OpCodePointer  = PFROMVP(*StackPointer);
+      if (((ulong)OpCodePointer>2) && (*(PUSHORT)((ulong)OpCodePointer-2)==0x21CD)) {
+
+         switch (AL(pcrf)) {
+           case 0x01:                    // Set Interrupt Vector 0
+            // Try to find Turbo Pascal CRT-Unit bugger...
+            SignaturePtr = VCOMPAT_SearchSignatureInMCB (&MagicData_TurboPascalCRT, OpCodePointer, -8000, 8000);
+            if ((SignaturePtr!=0) && (VCOMPAT_MagicVMpopup(&MagicData_TurboPascalCRTtext)))
+               MagicVMP_ApplyPatch (&MagicData_TurboPascalCRTpatch, SignaturePtr);
+            break;
+
+           case 0x02:                    // Get DOS Version Event
+            // Try to find Microsuck C bugger...
+            SignaturePtr = VCOMPAT_SearchSignatureInMCB (&MagicData_MicrosuckC, OpCodePointer, -12000, 12000);
+            if ((SignaturePtr!=0) && (VCOMPAT_MagicVMpopup(&MagicData_MicrosuckCtext)))
+               MagicVMP_ApplyPatch (&MagicData_MicrosuckCpatch, SignaturePtr);
+            break;
+          }
+         break;                          // Exit Do-Loop
+       }
+      // Adjust stack-pointer...
+      StackPointer = (PULONG)((ulong)StackPointer+6);
+    } until (StackDepth++>=10);
+ }
+

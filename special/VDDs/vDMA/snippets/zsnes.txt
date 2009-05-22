@@ -1,0 +1,182 @@
+.highmode
+    ; Setup DMA
+    ; Select DMA channel
+    mov al,[SBDMA]
+    add al,4
+    mov dx,000Ah
+    out dx,al
+    ; Clear DMA
+    mov al,00h
+    mov dx,000Ch
+    out dx,al
+    ; Set autoinit/write (set as DAC)
+    mov al,58h
+    add al,[SBDMA]
+    mov dx,000Bh
+    out dx,al
+    ; Send Offset Address
+    mov al,[memoryloc]
+    mov dl,[SBDMA]
+    shl dl,1
+    out dx,al
+    mov al,[memoryloc+1]
+    out dx,al
+    ; Send length of entire block
+    mov ax,[BufferSizeW]
+    dec ax
+    inc dx
+    out dx,al
+    mov al,ah
+    out dx,al
+    ; Send page # (address/65536)
+    mov al,[memoryloc+2]
+    mov dl,[SBDMAPage]
+    out dx,al
+    ; turn on DMA
+    mov al,[SBDMA]
+    mov dx,000Ah
+    out dx,al
+
+
+; ============================== IRQ Handler
+4x 320byte blocks
+
+; Process 20 blocks * 8 voices (no pitch yet)
+NEWSYM SBHandler16
+    push ebx
+    push ecx
+    push edx
+    push edi
+    push esi
+    push es
+    inc dword[sbhandexec]
+
+    cmp byte [vibracard], 1
+    je  .donotcallcmdapos      
+    call GetCDMAPos
+.donotcallcmdapos
+
+    cmp byte[csounddisable],1
+    je near stopsbsound16
+    test byte[DSPMem+6Ch],11000000b
+    jnz near stopsbsound16
+
+    mov es,[sbselec]
+
+    cmp byte[SBswitch],0
+    jne near .2ndblock
+    mov edi,[sbpmofs]
+    jmp .doneblock
+.2ndblock
+    ; copy to 2nd block
+    ; clear memory
+    mov edi,[sbpmofs]
+    add edi,[BufferSizeW]
+.doneblock
+    mov esi,DSPBuffer
+    mov ecx,[BufferSizeB]
+    cmp byte[Surround],0
+    je .nosurround
+    cmp byte[StereoSound],0
+;    jne near .surroundstereo
+    je .surroundmono
+;    jmp .surroundmono
+.nosurround
+.loopb
+    mov eax,[esi]
+    cmp eax,-32768
+    jge .noneg5
+    mov eax,-32768
+.noneg5
+    cmp eax,32767
+    jle .noneg6
+    mov eax,32767
+.noneg6
+    mov [es:edi],ax
+    add esi,4
+    add edi,2
+    dec ecx
+    jnz .loopb
+    jmp .sbend
+%ifdef _I_LIKE_SUCKY_FILTERS_          ;bwahaha
+.surroundstereo
+    shr ecx,1
+.loopbs
+    mov eax,[esi]
+    cmp eax,-32768
+    jge .noneg5s
+    mov eax,-32768
+.noneg5s
+    cmp eax,32767
+    jle .noneg6s
+    mov eax,32767
+.noneg6s
+    mov [es:edi],ax
+    mov eax,[esi+4]
+    cmp eax,-32768
+    jge .noneg5s2
+    mov eax,-32768
+.noneg5s2
+    cmp eax,32767
+    jle .noneg6s2
+    mov eax,32767
+.noneg6s2
+    neg ax
+    mov [es:edi+2],ax
+    add esi,8
+    add edi,4
+    dec ecx
+    jnz .loopbs
+    jmp .sbend
+%endif
+.surroundmono
+    cmp byte[SBswitch],0
+    je .1stblock
+    add edi,[BufferSizeW]
+.1stblock
+.loopbm
+    mov eax,[esi]
+    cmp eax,-32768
+    jge .noneg5m
+    mov eax,-32768
+.noneg5m
+    cmp eax,32767
+    jle .noneg6m
+    mov eax,32767
+.noneg6m
+    mov [es:edi],ax
+    neg ax
+    mov [es:edi+2],ax
+    add esi,4
+    add edi,4
+    dec ecx
+    jnz .loopbm
+.sbend
+    xor byte [SBswitch],1
+
+    ; acknowledge SB for IRQing
+    mov dx,[SBPort]
+    add dl,0Fh
+    in al,dx
+    mov al,20h
+    out 20h,al
+    cmp byte[SBIrq],7
+    jbe .nohighirq
+    mov al,20h
+    out 0A0h,al
+.nohighirq
+    sti
+
+
+Startprocsbdata:
+    call ProcessSoundBuffer
+
+    pop es
+    pop esi
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+    pop ds
+    iretd

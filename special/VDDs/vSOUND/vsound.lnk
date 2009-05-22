@@ -1,0 +1,5 @@
+vsound.obj main.obj
+vsound.sys
+vsound.map
+vdh.lib
+vsound.def

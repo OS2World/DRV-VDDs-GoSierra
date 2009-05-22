@@ -1,0 +1,48 @@
+First concepts:
+================
+
+/***ET+ CRF - Client Register Frame
+ *
+ *      The EBX register points to the CRF structure on entry
+ *      to I/O port handlers and VDD interrupt handlers.  VDDs
+ *      can retrieve or modify the client's registers with this
+ *      interface.
+ */
+
+
+DMA-Playback:
+==============
+   GetDMAbuffer & Copy to free internal VDD buffer
+   If bufferPlaying & IRQ not raised -> StopStream
+   Queue Buffer
+
+Callback from DTA - PreAck:
+============================
+   SetHook to get into VDM context
+   InContext -> Raise VIRQ
+                Set RaisedVIRQ for CurPlay Buffer
+
+EOI-Hook:
+==========
+   Clear VIRQ
+
+IRET-EOI-hook:
+===============
+   If Auto-Init -> call DMA-Playback
+
+DMA-Hook:
+==========
+Setzt UsedDMA-Channel
+
+Detection-IRQ-Release:
+=======================
+ Detection is detected due checking DMA-buffer length <512 bytes or via
+  Function F2 on Soundblaster.
+ Due the "great" programming skills of some game programmers ;) we need to
+  release multiple IRQs, just to be sure one goes through.
+  First: Directly after request
+  Second: When any soundblaster port is read 10 times within 5 ms, *BUT* no
+           write was performed on any port, we release another one.
+           (stupid, but this has to be done)
+           -> so even Sierra games without GoSierra don't work, grrrrr. But
+               it's not possible :(

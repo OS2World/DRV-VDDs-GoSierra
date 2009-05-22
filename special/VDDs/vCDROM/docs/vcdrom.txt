@@ -1,0 +1,105 @@
+
+                         ================================
+                          Martin Kiewitz's vCDROM v0.90b
+                         ================================
+
+                             Released on 23.02.2003
+
+                        Written and (c) by Martin Kiewitz
+                            Dedicated to Gerd Kiewitz
+-------------------------------------------------------------------------------
+
+  ============
+  | FOREWORD |
+  ============
+
+        OS/2 / eComStation's VDM is nearly perfectly emulating a real DOS
+         session. Did I say nearly? Yes, I did.
+
+        The VCDROM driver has some really bad bugs, incompatibility issues and
+         also traps the system every now and then (due bad pointer handling).
+
+        That's why I wrote a replacement driver for this VDD. It includes all
+         the fixes from vCOMPAT. It also won't trap and it's checking
+         input/output buffers for segment overflows. Another feature is the
+         automatic unlocking. Previously if a VDM application asked the system
+         to lock a CD-ROM drive, it remained locked even if the VDM was closed.
+         That's not the case with my replacement anymore. It also includes a
+         work-around for a bug in OS2CDROM.DMD/CD-ROM IFS that doesnt allow
+         getting handles to a drive, if no CD is inserted (also denying any
+         device status calls, etc.). This is a 100% rebuild, not one line of
+         code from the old driver got used and it's 95% assembly. It's larger
+         than the original version, because I implemented much more stuff and
+         didn't do some pseudo-optimizations like that pointer mishandling.
+
+        Original vCDROM reacted on INT_DURING_IO. I'm not doing so, because
+         vPIC contains a bug that will never reply any errors to the caller
+         when doing device I/O via slave-thread. Such error-codes could affect
+         copy-protections or multimedia applications that read directly from
+         CD-ROM.
+
+        There is also another problem that affected original vCDROM. Some OS/2
+         driver contains a bug (OS2CDROM or IFS, I don't know for sure) that
+         will deny opening a CD-ROM drive, when no CD-ROM is inserted. This
+         resulted in an unpredictable mess especially with Device-Status,
+         because that IOCTL should work at any time. I'm using fixed values, if
+         the open failed, so VDM applications will at least get something that
+         looks correctly.
+
+  =======================
+  | vCDROM INSTALLATION |
+  =======================
+
+        Simply rename the original vCDROM.SYS in your MDOS directory
+         (e.g. x:\OS2\MDOS) and replace the vCDROM.SYS contained in
+         this package with it.
+
+        A line containing "DEVICE=x:\OS2\MDOS\VCDROM.sys" should be already in
+         your config.sys, so don't add it again. If the driver is successfully
+         loaded, it will generate a property called "CDROM" containg copyright.
+
+        If you use vCOMPAT, you should update to 0.32b+. From that version on,
+         vCOMPAT will detect the vCDROM replacement and remove most of the
+         compatibility fixes automatically (ffs. vcompat.txt).
+
+  =====================
+  | vCDROM PROPERTIES |
+  =====================
+
+        INT_DURING_CDROM:
+       -------------------
+         If enabled, the VDM will still receive interrupts during CD-ROM
+          absolute disc reads. Otherwise it will block till the call is done.
+          It will default to OFF, because activating this functionality will
+          disable error-trapping and every call will succeed, which could cause
+          problems. This bug is in vPIC, not in vCDROM.
+
+  =================
+  | vCMOS HISTORY |
+  =================
+
+        v0.90b - [+] First public beta release
+
+  ===========
+  | CONTACT |
+  ===========
+
+        There are several ways to contact me, but you only get this one:
+         'kiewitz@netlabs.org'
+
+        Official homepage for all my stuff:
+         'http://ecomstation.ru/kiewitzsoft/'
+
+  ==========================
+  | GREETZ AND DEDICATIONS |
+  ==========================
+
+        I'm dedicating vCDROM to Gerd Kiewitz, my daddy.
+
+        I want to thank IBM for the great operating system called OS/2 and
+         Serenity Systems for releasing eComStation.
+
+        Special greetings go to the developer that did this:
+         *((PULONG)(control_block_pointer-3)) = '10DC';
+
+ - Martin Kiewitz
