@@ -1,4 +1,0 @@
-$COMPILE EXE
-
-      print inp(&h201)
-
