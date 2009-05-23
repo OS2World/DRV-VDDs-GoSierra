@@ -1,0 +1,161 @@
+
+                    ========================================
+                     Martin Kiewitz's GOSiERRA - Version v3
+                    ========================================
+
+                             Released on 02.03.2002
+
+                        Written and (c) by Martin Kiewitz
+                            Dedicated to Gerd Kiewitz
+-------------------------------------------------------------------------------
+
+        This software is 'e-mail ware'. This means, if you use it, please send
+         me an e-mail or a greeting card. I just want to see, how much people
+         are using it.
+
+  ============
+  | FOREWORD |
+  ============
+
+        First, there were great games by a company called Sierra.
+        They were running stable and well. Then, there were new computers.
+        Their CPUs ran faster. The problem was, that Sierra was able to
+         develop great games, but unable to CODE GOOD SOUND DRIVERS for them.
+
+        I bought several Sierra games some time ago. Sometime in 2000, I wanted
+         to play them again. Well, what did I see ? A nice exception.
+        I booted DOS and slowed down my computer by disabling CPU cache.
+        Now they worked again, but the actual gameplay was way-too-slow.
+        Some time passed and I debugged the actual games and their driver-code.
+        The funny thing was, that the only BIG bug was in the Init routine.
+        Everything else went smooth without modification.
+
+        This 'Init' routine contains some code as:
+         - Send commands to soundcard
+         - wait for response
+
+        The bug was, that they delayed the 'wait for response' part in a
+         really idiotic manner. This part is dependent on the speed of the
+         machine, so if it executes the commands too fast, the routine will
+         think that there was no response.
+
+        First, I patched the bug with my own code in ONE driver. Well, using
+         this driver on some games didn't work. (great design ;-)
+        I wrote the patch generic, so it applied itself to any occurance of
+         code that is similar to the one I found.
+
+        Now another funny part: I found several different sound drivers, where
+         the code I patched was exchanged with different code. Guess what.
+
+        THEY MODIFIED THIS ROUTINE ABOUT 3 TIMES AND EACH TIME THEY MESSED IT
+         UP AGAIN.
+
+        Thanx to Sierra by the way ;-)
+
+        Sierra released replacement drivers, which were 'bugfixed' in the same
+         great...I would call it Microsoft...manner.
+
+        Well, I put all those patches together into one magic program.
+        I called it GOSiERRA and released it to the Internet...
+
+         [...1 Year passed...]
+
+        This is GOSiERRA v2. It implements the ability to patch Dynamix-games
+         as well. So the whole Sierra game palette can be patched now.
+         (Real-Mode only)
+
+         [...another year passed...]
+
+        This is GOSiERRA v3. It fixes my "guessing" about how the dynamix
+         driver format works into the real thing. It also supports a new "type"
+         of driver that is used in some *very rare* Sierra CD versions like
+         Willy Beamish CD (thx to Andrey Molchanov).
+
+  ===================
+  | DYNAMIX-SUPPORT |
+  ===================
+
+        I got plenty of mails.
+        Really often 'Betrayal At Krondor' was the cause.
+
+        I tried to debug that one before. I thought Dynamix games would not
+         use the same Sierra drivers, because they didnt have them in the
+         normal form of AUDBLAST.DRV or SNDBLAST.DRV.
+        Well, I was wrong. I couldnt debug 'Betrayal At Krondor' because the
+         game needs too much memory. 2 days before, I found another game, that
+         uses the same Dynamix-styled way.
+        It is my all-time-favourite 'The Incredible Machine'. Now I noticed
+         several funny things. First of all, every Dynamix game has THE SAME
+         BUGGY drivers, but they put them all together in their RESOURCE-files.
+        The real crazy part begins, when one wants to extract them.
+        Dynamix thought it would be clever to COMPRESS them. <lol>
+
+        Now, after some hours of really pain-in-the-ass work, I got my own
+         unpack-algo to work. Dynamix code is typical C code. And they did
+         some work-arounds for bugs in their code. It's really sad.
+         My unpack-algo is about 400 bytes (!), theirs is about 10 times the
+         size and REALLY slow and damn-hard to debug.
+
+        Oh, well. One shoutout: "NO ONE SHALL EVER...EVER...EVER COMPRESS
+         SOUND DRIVERS...P-L-E-A-S-E".
+
+  ======================
+  | DYNAMIX-SUPPORT v2 |
+  ======================
+
+        Well. I got the thing working 2 days ago. Then I had the problem, that
+         the mouse didnt work anymore, when using Soundblaster. On Internal
+         Speaker sound, everything went smooth. So I thought, it would have to
+         do with my patch. Till now. :) I really love Dynamix.
+
+        The glitch was in the IRQ probing. It gets some interrupts and restores
+         them afterwards. Well...it tries to restore them correctly.
+
+        Some idiot just put in some command to late, so the IRQs are disabled
+         on the wrong IRQ-Enable-Port. Which means, they will often disable
+         HDD-controller...and well...keyboard and PS/2 port as well :)
+
+        The really crazy thing about it, is that the whole thing is working
+         PERFECTLY under WinDos. Why ? Because WinDos doesn't really have an
+         accurate VDM and ignores IRQ-settings. OS/2 reacts on mouse-irq,
+         but does ignore keyboard-irq (well, guess why).
+
+        This gets wired, if you see the performance. Under bare DOS *nothing*
+         works anymore (no keyboard, no mouse), under OS/2 just mouse isn't
+         working and under WinDos everything works. :-)
+
+        Now I fixed that ugly bug as well and added the patch information to
+         GOSiERRA. It will automatically remove this bug, if it is found
+         within any driver to be patched.
+
+  ==================
+  | GOSiERRA USAGE |
+  ==================
+
+        First, you have to check, if it's a Dynamix game.
+        Just look for AUDBLAST.DRV or SNDBLAST.DRV. If any of those files is
+         existent and is bigger than 100 bytes, it's a normal Sierra game.
+
+        In either way, copy gosierra.exe into the game directory.
+
+        Dynamix-Games:
+       ----------------
+        Execute it using 'gosierra dynamix' in command line prompt.
+
+        Sierra-Games:
+       ---------------
+        Execute it using 'gosierra' or 'gosierra [driver-name]'.
+
+        After successful patching (you should get a corresponding message),
+         you may delete gosierra.exe, because it's not needed anymore.
+
+  ===========
+  | CONTACT |
+  ===========
+
+        There are several ways to contact me.
+        Just try 'kiewitz@netlabs.org'.
+
+        My official homepage is at: http://www.ecomstation.ru/kiewitzsoft/
+
+        I'm dedicating GOSiERRA to my father.
