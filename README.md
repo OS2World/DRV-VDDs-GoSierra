@@ -3,7 +3,7 @@
 ## LICENSE
 * Not Specified
 
-## AUTHOR ##
+## AUTHOR
 * Martin Kiewitz
 
 ## LINKS
