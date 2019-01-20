@@ -1,11 +1,10 @@
 # DRV-VDDs-GoSierra
 
-LICENSE
-===============
+## LICENSE
 * Not Specified
 
-## Author ##
+## AUTHOR ##
 * Martin Kiewitz
 
-## Links
+## LINKS
 * https://svn.code.sf.net/p/air-boot/code/special/
