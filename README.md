@@ -1,7 +1,8 @@
 # DRV-VDDs-GoSierra
 
 ## LICENSE
-* Not Specified
+* Not Specified. 
+* It was released on the same repo than Air-Boot, so it can possible be GNU GPL V3.
 
 ## AUTHOR
 * Martin Kiewitz
